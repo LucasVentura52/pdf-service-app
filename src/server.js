@@ -15,6 +15,7 @@ import { z } from "zod";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
+const WAIT_UNTIL_OPTIONS = new Set(["load", "domcontentloaded", "networkidle"]);
 
 const PORT = Number(process.env.PORT || 3100);
 const DEFAULT_PDF_SERVICE_TOKEN = "troque-este-token-em-producao";
@@ -29,6 +30,9 @@ const PDF_CHROMIUM_CHANNEL = String(process.env.PDF_CHROMIUM_CHANNEL || "").trim
 const PDF_CHROMIUM_EXECUTABLE_PATH = String(process.env.PDF_CHROMIUM_EXECUTABLE_PATH || "").trim();
 const PDF_MAX_CONCURRENT_JOBS = Math.max(1, Number(process.env.PDF_MAX_CONCURRENT_JOBS || 2));
 const PDF_LOG_PERFORMANCE = String(process.env.PDF_LOG_PERFORMANCE || "").trim() === "1";
+const PDF_DEFAULT_WAIT_UNTIL = normalizeWaitUntil(process.env.PDF_DEFAULT_WAIT_UNTIL, "domcontentloaded");
+const PDF_NETWORKIDLE_BUDGET_MS = Math.max(300, Number(process.env.PDF_NETWORKIDLE_BUDGET_MS || 1200));
+const PDF_ASSET_WAIT_TIMEOUT_MS = Math.max(0, Number(process.env.PDF_ASSET_WAIT_TIMEOUT_MS || 800));
 const PDF_ALLOWED_ORIGINS = String(process.env.PDF_ALLOWED_ORIGINS || "*")
   .split(",")
   .map((item) => item.trim())
@@ -154,6 +158,14 @@ function normalizeOrigin(value) {
   }
 }
 
+function normalizeWaitUntil(value, fallback = "domcontentloaded") {
+  const raw = String(value || "").trim().toLowerCase();
+  if (WAIT_UNTIL_OPTIONS.has(raw)) {
+    return raw;
+  }
+  return fallback;
+}
+
 function sanitizeFilename(name = "documento") {
   return name
     .trim()
@@ -219,6 +231,7 @@ async function loadTemplate(templateId) {
   }
 
   const template = await fs.readFile(templatePath, "utf8");
+  Mustache.parse(template);
   templateCache.set(key, template);
   return template;
 }
@@ -279,13 +292,16 @@ async function launchBrowser() {
 }
 
 async function setPageContentWithFallback(page, html, options) {
-  const waitUntil = options?.waitUntil || "networkidle";
+  const waitUntil = normalizeWaitUntil(options?.waitUntil, PDF_DEFAULT_WAIT_UNTIL);
   const timeout = options?.timeoutMs || 15000;
+  const firstAttemptTimeout =
+    waitUntil === "networkidle" ? Math.min(timeout, PDF_NETWORKIDLE_BUDGET_MS) : timeout;
+  let usedFallbackWaitUntil = false;
 
   try {
     await page.setContent(html, {
       waitUntil,
-      timeout,
+      timeout: firstAttemptTimeout,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -302,6 +318,50 @@ async function setPageContentWithFallback(page, html, options) {
       waitUntil: "domcontentloaded",
       timeout,
     });
+    usedFallbackWaitUntil = true;
+  }
+
+  const shouldWaitAssets =
+    PDF_ASSET_WAIT_TIMEOUT_MS > 0 && (waitUntil === "domcontentloaded" || usedFallbackWaitUntil);
+
+  if (shouldWaitAssets) {
+    await waitForVisualAssets(page, PDF_ASSET_WAIT_TIMEOUT_MS);
+  }
+}
+
+async function waitForVisualAssets(page, timeoutMs) {
+  try {
+    await page.evaluate(async (maxWait) => {
+      const capTimeout = Math.max(100, Number(maxWait || 0));
+      const stopAfter = (promise) =>
+        Promise.race([
+          promise,
+          new Promise((resolve) => setTimeout(resolve, capTimeout)),
+        ]);
+
+      const waitFonts = async () => {
+        if (!("fonts" in document) || !document.fonts?.ready) return;
+        await document.fonts.ready;
+      };
+
+      const waitImages = async () => {
+        const images = Array.from(document.images || []);
+        if (!images.length) return;
+        await Promise.all(
+          images.map((img) => {
+            if (img.complete) return Promise.resolve();
+            return new Promise((resolve) => {
+              img.addEventListener("load", () => resolve(), { once: true });
+              img.addEventListener("error", () => resolve(), { once: true });
+            });
+          })
+        );
+      };
+
+      await stopAfter(Promise.all([waitFonts(), waitImages()]));
+    }, timeoutMs);
+  } catch {
+    // Nao interrompe a geração por timeout de assets.
   }
 }
 

@@ -22,7 +22,7 @@ API HTTP para geração de PDF no backend com Node.js + Playwright.
 - Dependências instaladas com `npm install`
 - Chromium do Playwright instalado com `npx playwright install chromium`
 
-## Instalacao
+## Instalação
 
 ```bash
 cd (diretório do projeto)
@@ -48,6 +48,9 @@ cp .env.example .env
 | `PDF_BODY_LIMIT` | não | Limite do body JSON | `8mb` |
 | `PDF_MAX_CONCURRENT_JOBS` | não | Quantidade máxima de PDFs gerados ao mesmo tempo no processo | `2` |
 | `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra tempo total de cada geração no log | `0` |
+| `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de render (`load`, `domcontentloaded`, `networkidle`) quando o payload não define `options.waitUntil` | `domcontentloaded` |
+| `PDF_NETWORKIDLE_BUDGET_MS` | não | Tempo máximo para a tentativa inicial com `networkidle` antes de fallback para `domcontentloaded` | `1200` |
+| `PDF_ASSET_WAIT_TIMEOUT_MS` | não | Janela curta para aguardar fontes/imagens após `domcontentloaded` | `800` |
 | `PDF_CHROMIUM_CHANNEL` | não | Channel opcional para launch do Chromium (ex.: `chrome`) | vazio |
 | `PDF_CHROMIUM_EXECUTABLE_PATH` | não | Caminho absoluto para binario Chromium/Chrome | vazio |
 
@@ -62,6 +65,9 @@ PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
 PDF_MAX_CONCURRENT_JOBS=2
 PDF_LOG_PERFORMANCE=0
+PDF_DEFAULT_WAIT_UNTIL=domcontentloaded
+PDF_NETWORKIDLE_BUDGET_MS=1200
+PDF_ASSET_WAIT_TIMEOUT_MS=800
 ```
 
 ## Execução
