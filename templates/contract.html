@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      color: #111827;
+      font-family: "Times New Roman", serif;
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: justify;
+    }
+
+    .contract {
+      width: 100%;
+    }
+
+    .contract-title {
+      margin: 0 0 5mm;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .party-block {
+      margin-bottom: 4mm;
+    }
+
+    .party-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 1.5mm;
+      text-transform: uppercase;
+    }
+
+    p {
+      margin: 0 0 3.2mm;
+    }
+
+    .clause-title {
+      margin-top: 4.5mm;
+      margin-bottom: 1.2mm;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .signature-grid {
+      margin-top: 16mm;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10mm;
+    }
+
+    .signature-line {
+      border-top: 1px solid #111827;
+      padding-top: 1.8mm;
+      text-align: center;
+      font-size: 11px;
+    }
+
+    .page-break {
+      break-before: page;
+      page-break-before: always;
+    }
+  </style>
+</head>
+
+<body>
+  <article class="contract">
+    <h1 class="contract-title">{{title}}</h1>
+
+    <section class="party-block">
+      <div class="party-title">Contratante</div>
+      <p>{{contractor.text}}</p>
+    </section>
+
+    <section class="party-block">
+      <div class="party-title">Contratado</div>
+      <p>{{contracted.text}}</p>
+    </section>
+
+    {{#clauses}}
+    <section>
+      <h2 class="clause-title">{{title}}</h2>
+      <p>{{text}}</p>
+    </section>
+    {{/clauses}}
+
+    {{#extraParagraphs}}
+    <p>{{.}}</p>
+    {{/extraParagraphs}}
+
+    <section class="signature-grid">
+      <div class="signature-line">{{contractor.signatureLabel}}</div>
+      <div class="signature-line">{{contracted.signatureLabel}}</div>
+    </section>
+  </article>
+</body>
+
+</html>
