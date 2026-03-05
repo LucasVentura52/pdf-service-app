@@ -17,7 +17,10 @@ const __dirname = path.dirname(__filename);
 const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 
 const PORT = Number(process.env.PORT || 3100);
-const PDF_SERVICE_TOKEN = process.env.PDF_SERVICE_TOKEN || "";
+const PDF_SERVICE_TOKENS = String(process.env.PDF_SERVICE_TOKEN || "")
+  .split(",")
+  .map((token) => token.trim())
+  .filter(Boolean);
 const PDF_PUBLIC_BASE_URL = process.env.PDF_PUBLIC_BASE_URL || "";
 const PDF_RATE_LIMIT_MAX = Number(process.env.PDF_RATE_LIMIT_MAX || 40);
 const PDF_BODY_LIMIT = process.env.PDF_BODY_LIMIT || "8mb";
@@ -238,7 +241,7 @@ async function closeBrowser() {
 }
 
 function requireToken(req, res, next) {
-  if (!PDF_SERVICE_TOKEN) {
+  if (!PDF_SERVICE_TOKENS.length) {
     res.status(503).json({
       message: "PDF_SERVICE_TOKEN nao configurado.",
     });
@@ -250,9 +253,9 @@ function requireToken(req, res, next) {
   const bearerToken = authHeader.toLowerCase().startsWith("bearer ")
     ? authHeader.slice(7).trim()
     : "";
-  const providedToken = headerToken || bearerToken;
+  const providedToken = (headerToken || bearerToken || "").trim();
 
-  if (providedToken !== PDF_SERVICE_TOKEN) {
+  if (!providedToken || !PDF_SERVICE_TOKENS.includes(providedToken)) {
     res.status(401).json({ message: "Token invalido." });
     return;
   }
