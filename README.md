@@ -41,12 +41,17 @@ cp .env.example .env
 | Variável | Obrigatória | Descrição | Padrão |
 |---|---|---|---|
 | `PORT` | não | Porta HTTP do servico | `3100` |
-| `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | fallback interno `36fb789bc9385f0c8b543e5d588adcd6caff4ee4e8a947c38a59af9ea3599e6570f53606b5d2abf925cc645a86a16921` |
-| `PDF_ALLOWED_ORIGINS` | sim em produção | Lista de origens CORS separadas por vírgula | `*` |
+| `PDF_SERVICE_TOKEN` | sim | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | sem padrão (startup bloqueia se ausente) |
+| `PDF_ALLOWED_ORIGINS` | recomendada | Lista de origens CORS separadas por vírgula (`*` não é aceito) | vazio (bloqueia requests com `Origin`) |
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
+| `PDF_ALLOWED_ASSET_ORIGINS` | recomendada | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização | usa origem de `PDF_PUBLIC_BASE_URL` quando definida |
+| `PDF_BLOCK_PRIVATE_NETWORK` | não | Quando `1`, bloqueia tentativas de acessar hosts privados/localhost durante a renderização | `1` |
+| `PDF_TRUST_PROXY` | recomendada em produção | Configuração de `trust proxy` do Express para rate limit/IP real (ex.: `1` na Render) | `false` |
 | `PDF_RATE_LIMIT_MAX` | não | Limite de requests por minuto em `POST /pdf` | `40` |
 | `PDF_BODY_LIMIT` | não | Limite do body JSON | `8mb` |
 | `PDF_MAX_CONCURRENT_JOBS` | não | Quantidade máxima de PDFs gerados ao mesmo tempo no processo | `2` |
+| `PDF_MAX_PENDING_JOBS` | não | Tamanho máximo da fila de espera quando todos os workers estão ocupados | `50` |
+| `PDF_QUEUE_WAIT_TIMEOUT_MS` | não | Tempo máximo que uma requisição pode aguardar na fila antes de falhar | `15000` |
 | `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra tempo total de cada geração no log | `0` |
 | `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de render (`load`, `domcontentloaded`, `networkidle`) quando o payload não define `options.waitUntil` | `domcontentloaded` |
 | `PDF_NETWORKIDLE_BUDGET_MS` | não | Tempo máximo para a tentativa inicial com `networkidle` antes de fallback para `domcontentloaded` | `1200` |
@@ -61,9 +66,14 @@ PORT=3100
 PDF_SERVICE_TOKEN=seu-token-forte
 PDF_ALLOWED_ORIGINS=https://sys.maisgerencia.com.br
 PDF_PUBLIC_BASE_URL=https://sys.maisgerencia.com.br
+PDF_ALLOWED_ASSET_ORIGINS=https://sys.maisgerencia.com.br
+PDF_BLOCK_PRIVATE_NETWORK=1
+PDF_TRUST_PROXY=1
 PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
 PDF_MAX_CONCURRENT_JOBS=2
+PDF_MAX_PENDING_JOBS=50
+PDF_QUEUE_WAIT_TIMEOUT_MS=15000
 PDF_LOG_PERFORMANCE=0
 PDF_DEFAULT_WAIT_UNTIL=domcontentloaded
 PDF_NETWORKIDLE_BUDGET_MS=1200
@@ -82,6 +92,12 @@ produção:
 
 ```bash
 npm start
+```
+
+testes automatizados:
+
+```bash
+npm test
 ```
 
 ### Deploy na Render
@@ -150,11 +166,13 @@ Gera PDF e retorna o binario no corpo da resposta.
 Regras importantes:
 
 - Informe `html` **ou** `templateId`
+- Não envie `html` e `templateId` juntos no mesmo payload
 - `filename`: maximo 120 caracteres
 - `templateId`: apenas `[a-zA-Z0-9_-]`, maximo 80 caracteres
 - `html`: maximo de 6.000.000 caracteres
 - `options.scale`: entre `0.1` e `2`
 - `options.timeoutMs`: entre `1000` e `60000`
+- assets HTTP/HTTPS externos so carregam se a origem estiver em `PDF_ALLOWED_ASSET_ORIGINS` (ou `PDF_PUBLIC_BASE_URL`)
 
 #### Exemplo A: HTML direto
 
@@ -207,19 +225,20 @@ Templates atuais:
 | HTTP | Quando ocorre | Body |
 |---|---|---|
 | `200` | PDF gerado com sucesso | binario PDF (`Content-Type: application/pdf`) |
-| `400` | Payload invalido | `{ "message": "Payload invalido.", "errors": ... }` |
+| `400` | Payload invalido ou asset externo nao permitido | `{ "message": "Payload invalido.", "errors": ... }` |
 | `401` | Token ausente/invalido | `{ "message": "Token invalido." }` |
+| `403` | Origem bloqueada pelo CORS | `{ "message": "Origem nao permitida pelo PDF service." }` |
+| `404` | `templateId` não encontrado | `{ "message": "Template '<id>' nao encontrado." }` |
 | `429` | Rate limit excedido | resposta padrao do `express-rate-limit` |
 | `500` | Falha interna na renderizacao | `{ "message": "Erro ao gerar PDF." }` |
-| `503` | Sem token carregado no processo | `{ "message": "PDF_SERVICE_TOKEN não configurado." }` |
+| `503` | Browser do Playwright indisponivel ou fila de geração saturada/expirada | `{ "message": "Playwright browser nao instalado no ambiente..." }` / `{ "message": "Fila de geração lotada..." }` / `{ "message": "Tempo limite na fila..." }` |
 
 ## Integraçao com frontend
 
-No frontend, configure:
+Nao exponha `PDF_SERVICE_TOKEN` em variáveis `VITE_*` ou em código cliente.
 
-```bash
-VITE_PDF_SERVICE_URL=https://pdf-service-app.onrender.com/pdf
-VITE_PDF_SERVICE_TOKEN=seu-token-forte
-```
+Fluxo recomendado:
 
-`VITE_PDF_SERVICE_TOKEN` deve ser igual ao `PDF_SERVICE_TOKEN` aceito pela API.
+- frontend chama seu backend;
+- backend chama este serviço de PDF com `x-pdf-token`;
+- token fica somente no servidor.
