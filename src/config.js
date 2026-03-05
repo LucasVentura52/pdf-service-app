@@ -1,6 +1,14 @@
 import process from "node:process";
 
 const WAIT_UNTIL_OPTIONS = new Set(["load", "domcontentloaded", "networkidle"]);
+const DEFAULT_LOCAL_DEV_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:4173",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:4173",
+];
 
 export function normalizeOrigin(value) {
   const raw = String(value || "").trim();
@@ -41,7 +49,11 @@ function parseTrustProxy(value) {
 const pdfServiceTokens = splitCsv(process.env.PDF_SERVICE_TOKEN);
 const pdfAllowedOrigins = splitCsv(process.env.PDF_ALLOWED_ORIGINS);
 const pdfPublicBaseUrl = String(process.env.PDF_PUBLIC_BASE_URL || "").trim();
-const corsOriginSeeds = pdfAllowedOrigins.length ? pdfAllowedOrigins : [pdfPublicBaseUrl].filter(Boolean);
+const pdfAllowLocalDevOrigins = String(process.env.PDF_ALLOW_LOCALHOST_ORIGINS || "1").trim() !== "0";
+const configuredCorsOrigins = pdfAllowedOrigins.length ? pdfAllowedOrigins : [pdfPublicBaseUrl].filter(Boolean);
+const corsOriginSeeds = pdfAllowLocalDevOrigins
+  ? [...configuredCorsOrigins, ...DEFAULT_LOCAL_DEV_ORIGINS]
+  : configuredCorsOrigins;
 const pdfAllowedAssetOrigins = splitCsv(process.env.PDF_ALLOWED_ASSET_ORIGINS);
 const assetOriginSeeds = pdfAllowedAssetOrigins.length
   ? pdfAllowedAssetOrigins
@@ -53,6 +65,7 @@ export const config = {
   pdfPublicBaseUrl,
   pdfRateLimitMax: Number(process.env.PDF_RATE_LIMIT_MAX || 40),
   pdfBodyLimit: process.env.PDF_BODY_LIMIT || "8mb",
+  pdfAllowLocalDevOrigins,
   pdfChromiumChannel: String(process.env.PDF_CHROMIUM_CHANNEL || "").trim(),
   pdfChromiumExecutablePath: String(process.env.PDF_CHROMIUM_EXECUTABLE_PATH || "").trim(),
   pdfMaxConcurrentJobs: Math.max(1, Number(process.env.PDF_MAX_CONCURRENT_JOBS || 2)),
@@ -92,6 +105,10 @@ if (!pdfAllowedOrigins.length && config.normalizedAllowedOrigins.size) {
   console.warn(
     "[pdf-service] PDF_ALLOWED_ORIGINS vazio. Usando origem de PDF_PUBLIC_BASE_URL como fallback para CORS."
   );
+}
+
+if (config.pdfAllowLocalDevOrigins) {
+  console.warn("[pdf-service] Origens locais de desenvolvimento estao liberadas para CORS.");
 }
 
 if (!config.normalizedAllowedOrigins.size) {
