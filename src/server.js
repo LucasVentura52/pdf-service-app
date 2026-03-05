@@ -25,6 +25,9 @@ const PDF_ALLOWED_ORIGINS = String(process.env.PDF_ALLOWED_ORIGINS || "*")
   .split(",")
   .map((item) => item.trim())
   .filter(Boolean);
+const NORMALIZED_ALLOWED_ORIGINS = new Set(
+  PDF_ALLOWED_ORIGINS.map((origin) => normalizeOrigin(origin)).filter(Boolean)
+);
 
 const marginValueSchema = z
   .string()
@@ -93,7 +96,13 @@ app.use(
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || PDF_ALLOWED_ORIGINS.includes("*") || PDF_ALLOWED_ORIGINS.includes(origin)) {
+      if (!origin || NORMALIZED_ALLOWED_ORIGINS.has("*")) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedRequestOrigin = normalizeOrigin(origin);
+      if (normalizedRequestOrigin && NORMALIZED_ALLOWED_ORIGINS.has(normalizedRequestOrigin)) {
         callback(null, true);
         return;
       }
@@ -115,6 +124,18 @@ app.use(
 
 const templateCache = new Map();
 let browserPromise = null;
+
+function normalizeOrigin(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw === "*") return "*";
+
+  try {
+    return new URL(raw).origin.toLowerCase();
+  } catch {
+    return raw.replace(/\/+$/, "").toLowerCase();
+  }
+}
 
 function sanitizeFilename(name = "documento") {
   return name

@@ -21,6 +21,25 @@ Copie `.env.example` para `.env` e ajuste:
 - `PDF_RATE_LIMIT_MAX`: limite por minuto no endpoint `/pdf`
 - `PDF_BODY_LIMIT`: limite de payload JSON (ex: `8mb`)
 
+### Configuracao de producao (Render)
+
+No servico `pdf-service-app` da Render, configure:
+
+```bash
+PDF_SERVICE_TOKEN=troque-este-token-em-producao
+PDF_ALLOWED_ORIGINS=https://sys.maisgerencia.com.br
+PDF_PUBLIC_BASE_URL=https://sys.maisgerencia.com.br
+PDF_RATE_LIMIT_MAX=40
+PDF_BODY_LIMIT=8mb
+```
+
+No frontend (Render), configure:
+
+```bash
+VITE_PDF_SERVICE_URL=https://pdf-service-app.onrender.com/pdf
+VITE_PDF_SERVICE_TOKEN=troque-este-token-em-producao
+```
+
 ## 3) Rodar
 
 ```bash
