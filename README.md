@@ -41,7 +41,7 @@ cp .env.example .env
 | Variável | Obrigatória | Descrição | Padrão |
 |---|---|---|---|
 | `PORT` | não | Porta HTTP do servico | `3100` |
-| `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | fallback interno `troque-este-token-em-produção` |
+| `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | fallback interno `36fb789bc9385f0c8b543e5d588adcd6caff4ee4e8a947c38a59af9ea3599e6570f53606b5d2abf925cc645a86a16921` |
 | `PDF_ALLOWED_ORIGINS` | sim em produção | Lista de origens CORS separadas por vírgula | `*` |
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
 | `PDF_RATE_LIMIT_MAX` | não | Limite de requests por minuto em `POST /pdf` | `40` |

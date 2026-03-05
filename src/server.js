@@ -18,7 +18,7 @@ const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 const WAIT_UNTIL_OPTIONS = new Set(["load", "domcontentloaded", "networkidle"]);
 
 const PORT = Number(process.env.PORT || 3100);
-const DEFAULT_PDF_SERVICE_TOKEN = "troque-este-token-em-producao";
+const DEFAULT_PDF_SERVICE_TOKEN = "36fb789bc9385f0c8b543e5d588adcd6caff4ee4e8a947c38a59af9ea3599e6570f53606b5d2abf925cc645a86a16921";
 const PDF_SERVICE_TOKENS = String(process.env.PDF_SERVICE_TOKEN || DEFAULT_PDF_SERVICE_TOKEN)
   .split(",")
   .map((token) => token.trim())
