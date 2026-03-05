@@ -25,6 +25,8 @@ const PDF_SERVICE_TOKENS = String(process.env.PDF_SERVICE_TOKEN || DEFAULT_PDF_S
 const PDF_PUBLIC_BASE_URL = process.env.PDF_PUBLIC_BASE_URL || "";
 const PDF_RATE_LIMIT_MAX = Number(process.env.PDF_RATE_LIMIT_MAX || 40);
 const PDF_BODY_LIMIT = process.env.PDF_BODY_LIMIT || "8mb";
+const PDF_CHROMIUM_CHANNEL = String(process.env.PDF_CHROMIUM_CHANNEL || "").trim();
+const PDF_CHROMIUM_EXECUTABLE_PATH = String(process.env.PDF_CHROMIUM_EXECUTABLE_PATH || "").trim();
 const PDF_ALLOWED_ORIGINS = String(process.env.PDF_ALLOWED_ORIGINS || "*")
   .split(",")
   .map((item) => item.trim())
@@ -226,13 +228,64 @@ async function resolveHtmlFromPayload(payload) {
 
 async function getBrowser() {
   if (!browserPromise) {
-    browserPromise = chromium.launch({
-      headless: true,
-      channel: "chromium",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    browserPromise = launchBrowser();
   }
   return browserPromise;
+}
+
+async function launchBrowser() {
+  const launchOptions = {
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+  };
+
+  if (PDF_CHROMIUM_EXECUTABLE_PATH) {
+    launchOptions.executablePath = PDF_CHROMIUM_EXECUTABLE_PATH;
+  }
+
+  if (PDF_CHROMIUM_CHANNEL) {
+    launchOptions.channel = PDF_CHROMIUM_CHANNEL;
+  }
+
+  try {
+    return await chromium.launch(launchOptions);
+  } catch (error) {
+    if (launchOptions.channel) {
+      console.warn(
+        `[pdf-service] Falha ao iniciar chromium com channel="${launchOptions.channel}". Tentando fallback sem channel.`
+      );
+      const { channel, ...fallbackOptions } = launchOptions;
+      return chromium.launch(fallbackOptions);
+    }
+    throw error;
+  }
+}
+
+async function setPageContentWithFallback(page, html, options) {
+  const waitUntil = options?.waitUntil || "networkidle";
+  const timeout = options?.timeoutMs || 15000;
+
+  try {
+    await page.setContent(html, {
+      waitUntil,
+      timeout,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const canRetry = waitUntil === "networkidle" && /timeout/i.test(message);
+
+    if (!canRetry) {
+      throw error;
+    }
+
+    console.warn(
+      "[pdf-service] Timeout com waitUntil=networkidle. Repetindo setContent com waitUntil=domcontentloaded."
+    );
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+      timeout,
+    });
+  }
 }
 
 async function closeBrowser() {
@@ -299,10 +352,7 @@ app.post("/pdf", requireToken, async (req, res) => {
     const page = await context.newPage();
 
     try {
-      await page.setContent(html, {
-        waitUntil: payload.options?.waitUntil || "networkidle",
-        timeout: payload.options?.timeoutMs || 15000,
-      });
+      await setPageContentWithFallback(page, html, payload.options);
       await page.emulateMedia({ media: "print" });
 
       const pdfBuffer = await page.pdf({
@@ -324,7 +374,25 @@ app.post("/pdf", requireToken, async (req, res) => {
       await context.close();
     }
   } catch (error) {
-    console.error("Erro ao gerar PDF:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Erro ao gerar PDF:", message);
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+    }
+
+    const missingBrowser =
+      /Executable doesn't exist/i.test(message) ||
+      /playwright install/i.test(message) ||
+      /browserType\.launch/i.test(message);
+
+    if (missingBrowser) {
+      res.status(503).json({
+        message:
+          "Playwright browser nao instalado no ambiente. Execute 'playwright install chromium' no build/deploy.",
+      });
+      return;
+    }
+
     res.status(500).json({
       message: "Erro ao gerar PDF.",
     });
