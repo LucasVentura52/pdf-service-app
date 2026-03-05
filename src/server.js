@@ -27,6 +27,8 @@ const PDF_RATE_LIMIT_MAX = Number(process.env.PDF_RATE_LIMIT_MAX || 40);
 const PDF_BODY_LIMIT = process.env.PDF_BODY_LIMIT || "8mb";
 const PDF_CHROMIUM_CHANNEL = String(process.env.PDF_CHROMIUM_CHANNEL || "").trim();
 const PDF_CHROMIUM_EXECUTABLE_PATH = String(process.env.PDF_CHROMIUM_EXECUTABLE_PATH || "").trim();
+const PDF_MAX_CONCURRENT_JOBS = Math.max(1, Number(process.env.PDF_MAX_CONCURRENT_JOBS || 2));
+const PDF_LOG_PERFORMANCE = String(process.env.PDF_LOG_PERFORMANCE || "").trim() === "1";
 const PDF_ALLOWED_ORIGINS = String(process.env.PDF_ALLOWED_ORIGINS || "*")
   .split(",")
   .map((item) => item.trim())
@@ -136,6 +138,9 @@ app.use(
 
 const templateCache = new Map();
 let browserPromise = null;
+let contextPromise = null;
+let activeJobs = 0;
+const pendingJobs = [];
 
 function normalizeOrigin(value) {
   const raw = String(value || "").trim();
@@ -233,6 +238,18 @@ async function getBrowser() {
   return browserPromise;
 }
 
+async function getContext() {
+  if (!contextPromise) {
+    contextPromise = createContext();
+  }
+  return contextPromise;
+}
+
+async function createContext() {
+  const browser = await getBrowser();
+  return browser.newContext();
+}
+
 async function launchBrowser() {
   const launchOptions = {
     headless: true,
@@ -288,7 +305,89 @@ async function setPageContentWithFallback(page, html, options) {
   }
 }
 
+async function acquirePdfJob() {
+  if (activeJobs < PDF_MAX_CONCURRENT_JOBS) {
+    activeJobs += 1;
+    return releasePdfJob;
+  }
+
+  return new Promise((resolve) => {
+    pendingJobs.push(() => {
+      resolve(releasePdfJob);
+    });
+  });
+}
+
+function releasePdfJob() {
+  const next = pendingJobs.shift();
+  if (next) {
+    next();
+    return;
+  }
+  activeJobs = Math.max(0, activeJobs - 1);
+}
+
+function logPerformanceMetric(filename, startedAt) {
+  if (!PDF_LOG_PERFORMANCE) return;
+  const durationMs = Date.now() - startedAt;
+  console.log(`[pdf-service] ${filename}: ${durationMs}ms`);
+}
+
+async function createPageWithRecovery() {
+  try {
+    const context = await getContext();
+    return await context.newPage();
+  } catch (error) {
+    console.warn("[pdf-service] Falha ao criar page no contexto atual. Reiniciando browser/contexto.");
+    await closeBrowser();
+    const context = await getContext();
+    return context.newPage();
+  }
+}
+
+async function warmupTemplateCache() {
+  try {
+    const files = await fs.readdir(TEMPLATE_DIR);
+    const htmlFiles = files.filter((file) => file.endsWith(".html"));
+    await Promise.all(
+      htmlFiles.map((file) => {
+        const templateId = file.replace(/\.html$/i, "");
+        return loadTemplate(templateId);
+      })
+    );
+    console.log(`[pdf-service] templates carregados em cache: ${htmlFiles.length}`);
+  } catch (error) {
+    console.warn("[pdf-service] Nao foi possivel carregar templates no startup.", error);
+  }
+}
+
+async function warmupBrowser() {
+  try {
+    const context = await getContext();
+    const page = await context.newPage();
+    await page.setContent("<html><body></body></html>", {
+      waitUntil: "domcontentloaded",
+      timeout: 5000,
+    });
+    await page.close();
+    console.log("[pdf-service] browser/contexto aquecidos.");
+  } catch (error) {
+    console.warn("[pdf-service] warmup do browser falhou.", error);
+  }
+}
+
 async function closeBrowser() {
+  if (contextPromise) {
+    try {
+      const context = await contextPromise;
+      await context.close();
+    } catch (error) {
+      console.error("Erro ao fechar contexto do PDF service:", error);
+    } finally {
+      contextPromise = null;
+    }
+  }
+
   if (!browserPromise) return;
   try {
     const browser = await browserPromise;
@@ -341,15 +440,16 @@ app.post("/pdf", requireToken, async (req, res) => {
   }
 
   const payload = parsed.data;
+  const filename = sanitizeFilename(payload.filename || "documento-gerado") || "documento-gerado";
+  const startedAt = Date.now();
+  const releaseJob = await acquirePdfJob();
 
   try {
     let html = await resolveHtmlFromPayload(payload);
     html = ensureFullHtmlDocument(html);
     html = injectBaseHref(html, PDF_PUBLIC_BASE_URL);
 
-    const browser = await getBrowser();
-    const context = await browser.newContext();
-    const page = await context.newPage();
+    const page = await createPageWithRecovery();
 
     try {
       await setPageContentWithFallback(page, html, payload.options);
@@ -365,13 +465,13 @@ app.post("/pdf", requireToken, async (req, res) => {
         margin: payload.options?.margin,
       });
 
-      const filename = sanitizeFilename(payload.filename || "documento-gerado") || "documento-gerado";
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Length", String(pdfBuffer.length));
       res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
       res.send(pdfBuffer);
+      logPerformanceMetric(filename, startedAt);
     } finally {
-      await context.close();
+      await page.close();
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -396,6 +496,8 @@ app.post("/pdf", requireToken, async (req, res) => {
     res.status(500).json({
       message: "Erro ao gerar PDF.",
     });
+  } finally {
+    releaseJob();
   }
 });
 
@@ -406,6 +508,11 @@ app.use((error, _req, res, _next) => {
 
 const server = app.listen(PORT, () => {
   console.log(`[pdf-service] running on http://localhost:${PORT}`);
+  console.log(
+    `[pdf-service] concorrencia maxima configurada em ${PDF_MAX_CONCURRENT_JOBS} job(s) simultaneo(s).`
+  );
+  void warmupTemplateCache();
+  void warmupBrowser();
 });
 
 process.on("SIGINT", async () => {

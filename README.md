@@ -46,6 +46,8 @@ cp .env.example .env
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
 | `PDF_RATE_LIMIT_MAX` | não | Limite de requests por minuto em `POST /pdf` | `40` |
 | `PDF_BODY_LIMIT` | não | Limite do body JSON | `8mb` |
+| `PDF_MAX_CONCURRENT_JOBS` | não | Quantidade máxima de PDFs gerados ao mesmo tempo no processo | `2` |
+| `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra tempo total de cada geração no log | `0` |
 | `PDF_CHROMIUM_CHANNEL` | não | Channel opcional para launch do Chromium (ex.: `chrome`) | vazio |
 | `PDF_CHROMIUM_EXECUTABLE_PATH` | não | Caminho absoluto para binario Chromium/Chrome | vazio |
 
@@ -58,6 +60,8 @@ PDF_ALLOWED_ORIGINS=https://sys.maisgerencia.com.br
 PDF_PUBLIC_BASE_URL=https://sys.maisgerencia.com.br
 PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
+PDF_MAX_CONCURRENT_JOBS=2
+PDF_LOG_PERFORMANCE=0
 ```
 
 ## Execução
@@ -201,7 +205,7 @@ Templates atuais:
 | `500` | Falha interna na renderizacao | `{ "message": "Erro ao gerar PDF." }` |
 | `503` | Sem token carregado no processo | `{ "message": "PDF_SERVICE_TOKEN não configurado." }` |
 
-## Integracao com frontend
+## Integraçao com frontend
 
 No frontend, configure:
 
