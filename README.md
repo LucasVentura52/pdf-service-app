@@ -45,7 +45,7 @@ cp .env.example .env
 | `PDF_ALLOWED_ORIGINS` | recomendada | Lista de origens CORS separadas por vírgula (`*` não é aceito) | usa `PDF_PUBLIC_BASE_URL` quando vazio; origens locais podem ser liberadas pelo flag abaixo |
 | `PDF_ALLOW_LOCALHOST_ORIGINS` | não | Quando `1`, libera origens locais comuns (`localhost`/`127.0.0.1`) para desenvolvimento | `1` |
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
-| `PDF_ALLOWED_ASSET_ORIGINS` | recomendada | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização | usa origem de `PDF_PUBLIC_BASE_URL` quando definida |
+| `PDF_ALLOWED_ASSET_ORIGINS` | opcional | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização | se vazio, permite assets publicos e segue bloqueando rede privada |
 | `PDF_BLOCK_PRIVATE_NETWORK` | não | Quando `1`, bloqueia tentativas de acessar hosts privados/localhost durante a renderização | `1` |
 | `PDF_TRUST_PROXY` | recomendada em produção | Configuração de `trust proxy` do Express para rate limit/IP real (ex.: `1` na Render) | `false` |
 | `PDF_RATE_LIMIT_MAX` | não | Limite de requests por minuto em `POST /pdf` | `40` |
@@ -68,7 +68,7 @@ PDF_SERVICE_TOKEN=seu-token-forte
 PDF_ALLOWED_ORIGINS=https://sys.maisgerencia.com.br
 PDF_PUBLIC_BASE_URL=https://sys.maisgerencia.com.br
 PDF_ALLOW_LOCALHOST_ORIGINS=1
-PDF_ALLOWED_ASSET_ORIGINS=https://sys.maisgerencia.com.br
+PDF_ALLOWED_ASSET_ORIGINS=https://sys.maisgerencia.com.br,https://api.maisgerencia.com.br
 PDF_BLOCK_PRIVATE_NETWORK=1
 PDF_TRUST_PROXY=1
 PDF_RATE_LIMIT_MAX=40
@@ -174,7 +174,8 @@ Regras importantes:
 - `html`: maximo de 6.000.000 caracteres
 - `options.scale`: entre `0.1` e `2`
 - `options.timeoutMs`: entre `1000` e `60000`
-- assets HTTP/HTTPS externos so carregam se a origem estiver em `PDF_ALLOWED_ASSET_ORIGINS` (ou `PDF_PUBLIC_BASE_URL`)
+- com `PDF_ALLOWED_ASSET_ORIGINS` preenchido, assets HTTP/HTTPS externos so carregam se a origem estiver nessa allowlist
+- com `PDF_ALLOWED_ASSET_ORIGINS` vazio, assets publicos sao permitidos automaticamente; rede privada/localhost continuam bloqueados
 
 #### Exemplo A: HTML direto
 

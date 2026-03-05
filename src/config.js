@@ -55,9 +55,11 @@ const corsOriginSeeds = pdfAllowLocalDevOrigins
   ? [...configuredCorsOrigins, ...DEFAULT_LOCAL_DEV_ORIGINS]
   : configuredCorsOrigins;
 const pdfAllowedAssetOrigins = splitCsv(process.env.PDF_ALLOWED_ASSET_ORIGINS);
-const assetOriginSeeds = pdfAllowedAssetOrigins.length
-  ? pdfAllowedAssetOrigins
-  : [pdfPublicBaseUrl].filter(Boolean);
+const pdfBlockPrivateNetwork = String(process.env.PDF_BLOCK_PRIVATE_NETWORK || "1").trim() !== "0";
+const normalizedConfiguredAssetOrigins = pdfAllowedAssetOrigins
+  .map((origin) => normalizeOrigin(origin))
+  .filter((origin) => Boolean(origin) && origin !== "*");
+const assetOriginSeeds = normalizedConfiguredAssetOrigins;
 
 export const config = {
   port: Number(process.env.PORT || 3100),
@@ -81,10 +83,8 @@ export const config = {
   ),
   normalizedAllowedAssetOrigins: new Set(
     assetOriginSeeds
-      .map((origin) => normalizeOrigin(origin))
-      .filter((origin) => Boolean(origin) && origin !== "*")
   ),
-  pdfBlockPrivateNetwork: String(process.env.PDF_BLOCK_PRIVATE_NETWORK || "1").trim() !== "0",
+  pdfBlockPrivateNetwork,
 };
 
 export function assertCriticalConfig() {
@@ -119,7 +119,7 @@ if (!config.normalizedAllowedOrigins.size) {
 
 if (!config.normalizedAllowedAssetOrigins.size) {
   console.warn(
-    "[pdf-service] Nenhuma origem externa permitida para assets (PDF_ALLOWED_ASSET_ORIGINS/PDF_PUBLIC_BASE_URL)."
+    "[pdf-service] PDF_ALLOWED_ASSET_ORIGINS vazio. Assets HTTP/HTTPS publicos serao permitidos; rede privada/localhost continuam bloqueados."
   );
 }
 

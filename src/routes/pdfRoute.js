@@ -2,7 +2,12 @@ import { Router } from "express";
 import { pdfRequestSchema } from "../schemas/pdfRequestSchema.js";
 import { TemplateNotFoundError } from "../services/templateService.js";
 import { QueueSaturatedError, QueueTimeoutError } from "../services/pdfQueue.js";
-import { ensureFullHtmlDocument, injectBaseHref, sanitizeFilename } from "../utils/html.js";
+import {
+  ensureFullHtmlDocument,
+  extractHttpOriginsFromHtml,
+  injectBaseHref,
+  sanitizeFilename,
+} from "../utils/html.js";
 
 function logPerformanceMetric(enabled, filename, startedAt) {
   if (!enabled) return;
@@ -33,8 +38,11 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
       let html = await templateService.resolveHtmlFromPayload(payload);
       html = ensureFullHtmlDocument(html);
       html = injectBaseHref(html, config.pdfPublicBaseUrl);
+      const htmlAssetOrigins = extractHttpOriginsFromHtml(html);
 
-      const pageSession = await browserService.createPageWithRecovery();
+      const pageSession = await browserService.createPageWithRecovery({
+        allowedAssetOrigins: htmlAssetOrigins,
+      });
       const { page } = pageSession;
 
       try {
@@ -104,7 +112,7 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
       if (blockedExternalAsset) {
         res.status(400).json({
           message:
-            "Payload requisitou recurso externo nao permitido. Ajuste PDF_ALLOWED_ASSET_ORIGINS/PDF_PUBLIC_BASE_URL.",
+            "Payload requisitou recurso externo nao permitido. Inclua a origem em PDF_ALLOWED_ASSET_ORIGINS ou deixe a allowlist vazia para permitir assets publicos.",
         });
         return;
       }

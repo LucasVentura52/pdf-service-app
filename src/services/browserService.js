@@ -76,7 +76,11 @@ function isRequestUrlAllowed(url, allowedAssetOrigins, blockPrivateNetwork) {
     return false;
   }
 
-  return false;
+  if (!allowedAssetOrigins.size) {
+    return true;
+  }
+
+  return allowedAssetOrigins.has(parsed.origin.toLowerCase());
 }
 
 export function createBrowserService(config) {
@@ -89,21 +93,43 @@ export function createBrowserService(config) {
     return browserPromise;
   }
 
-  async function createContextWithNetworkGuard() {
+  function mergeAllowedAssetOrigins(extraAllowedAssetOrigins) {
+    const merged = new Set(config.normalizedAllowedAssetOrigins);
+    if (!extraAllowedAssetOrigins) return merged;
+
+    for (const origin of extraAllowedAssetOrigins) {
+      const normalized = String(origin || "").trim().toLowerCase();
+      if (normalized) {
+        merged.add(normalized);
+      }
+    }
+
+    return merged;
+  }
+
+  async function createContextWithNetworkGuard(extraAllowedAssetOrigins) {
     const browser = await getBrowser();
     const context = await browser.newContext();
+    const resolvedAllowedAssetOrigins = mergeAllowedAssetOrigins(extraAllowedAssetOrigins);
     await context.route("**/*", async (route) => {
       const requestUrl = route.request().url();
       if (
         isRequestUrlAllowed(
           requestUrl,
-          config.normalizedAllowedAssetOrigins,
+          resolvedAllowedAssetOrigins,
           config.pdfBlockPrivateNetwork
         )
       ) {
         await route.continue();
         return;
       }
+      console.warn(
+        `[pdf-service] Asset bloqueado durante renderizacao: ${requestUrl} | allowlist=${
+          resolvedAllowedAssetOrigins.size
+            ? Array.from(resolvedAllowedAssetOrigins).join(",")
+            : "<public-assets-enabled>"
+        }`
+      );
       await route.abort("blockedbyclient");
     });
     return context;
@@ -243,18 +269,18 @@ export function createBrowserService(config) {
     }
   }
 
-  async function createPageWithRecovery() {
+  async function createPageWithRecovery(options = {}) {
     try {
-      return await createIsolatedPageSession();
+      return await createIsolatedPageSession(options);
     } catch {
       console.warn("[pdf-service] Falha ao criar page no contexto atual. Reiniciando browser/contexto.");
       await closeBrowser();
-      return createIsolatedPageSession();
+      return createIsolatedPageSession(options);
     }
   }
 
-  async function createIsolatedPageSession() {
-    const context = await createContextWithNetworkGuard();
+  async function createIsolatedPageSession(options = {}) {
+    const context = await createContextWithNetworkGuard(options.allowedAssetOrigins);
     try {
       const page = await context.newPage();
       return {
