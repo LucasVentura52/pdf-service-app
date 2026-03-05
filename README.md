@@ -1,6 +1,6 @@
 # PDF Service API
 
-API HTTP para geracao de PDF no backend com Node.js + Playwright.
+API HTTP para geração de PDF no backend com Node.js + Playwright.
 
 ## Objetivo
 
@@ -19,13 +19,13 @@ API HTTP para geracao de PDF no backend com Node.js + Playwright.
 ## Requisitos
 
 - Node.js 18+
-- Dependencias instaladas com `npm install`
+- Dependências instaladas com `npm install`
 - Chromium do Playwright instalado com `npx playwright install chromium`
 
 ## Instalacao
 
 ```bash
-cd /Users/diogomuneratto/pdf-service-app
+cd (diretório do projeto)
 npm install
 npx playwright install chromium
 ```
@@ -38,18 +38,18 @@ Copie `.env.example` para `.env`.
 cp .env.example .env
 ```
 
-| Variavel | Obrigatoria | Descricao | Padrao |
+| Variável | Obrigatória | Descrição | Padrão |
 |---|---|---|---|
-| `PORT` | nao | Porta HTTP do servico | `3100` |
-| `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por virgula) | fallback interno `troque-este-token-em-producao` |
-| `PDF_ALLOWED_ORIGINS` | sim em producao | Lista de origens CORS separadas por virgula | `*` |
-| `PDF_PUBLIC_BASE_URL` | nao | Base para resolver assets relativos via `<base href=...>` | vazio |
-| `PDF_RATE_LIMIT_MAX` | nao | Limite de requests por minuto em `POST /pdf` | `40` |
-| `PDF_BODY_LIMIT` | nao | Limite do body JSON | `8mb` |
-| `PDF_CHROMIUM_CHANNEL` | nao | Channel opcional para launch do Chromium (ex.: `chrome`) | vazio |
-| `PDF_CHROMIUM_EXECUTABLE_PATH` | nao | Caminho absoluto para binario Chromium/Chrome | vazio |
+| `PORT` | não | Porta HTTP do servico | `3100` |
+| `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | fallback interno `troque-este-token-em-produção` |
+| `PDF_ALLOWED_ORIGINS` | sim em produção | Lista de origens CORS separadas por vírgula | `*` |
+| `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
+| `PDF_RATE_LIMIT_MAX` | não | Limite de requests por minuto em `POST /pdf` | `40` |
+| `PDF_BODY_LIMIT` | não | Limite do body JSON | `8mb` |
+| `PDF_CHROMIUM_CHANNEL` | não | Channel opcional para launch do Chromium (ex.: `chrome`) | vazio |
+| `PDF_CHROMIUM_EXECUTABLE_PATH` | não | Caminho absoluto para binario Chromium/Chrome | vazio |
 
-### Exemplo de producao (Render)
+### Exemplo de produção (Render)
 
 ```bash
 PORT=3100
@@ -60,7 +60,7 @@ PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
 ```
 
-## Execucao
+## Execução
 
 Desenvolvimento (watch):
 
@@ -68,7 +68,7 @@ Desenvolvimento (watch):
 npm run dev
 ```
 
-Producao:
+produção:
 
 ```bash
 npm start
@@ -76,7 +76,7 @@ npm start
 
 ### Deploy na Render
 
-Configuracao recomendada:
+Configuração recomendada:
 
 - Build Command: `npm install`
 - Start Command: `npm start`
@@ -199,30 +199,7 @@ Templates atuais:
 | `401` | Token ausente/invalido | `{ "message": "Token invalido." }` |
 | `429` | Rate limit excedido | resposta padrao do `express-rate-limit` |
 | `500` | Falha interna na renderizacao | `{ "message": "Erro ao gerar PDF." }` |
-| `503` | Sem token carregado no processo | `{ "message": "PDF_SERVICE_TOKEN nao configurado." }` |
-
-## Troubleshooting
-
-### `500 Erro ao gerar PDF.`
-
-Verifique no log do servico:
-
-1. Se houve falha para iniciar o browser (`chromium.launch`)
-2. Se houve timeout de renderizacao (`setContent`)
-
-Checklist:
-
-- Confirmar se o deploy executou `postinstall` (Playwright Chromium instalado)
-- Confirmar token e CORS (`PDF_SERVICE_TOKEN`, `PDF_ALLOWED_ORIGINS`)
-- Reiniciar o servico apos alterar variaveis de ambiente
-- Se necessario, informar `PDF_CHROMIUM_EXECUTABLE_PATH` com um binario valido
-
-## Seguranca
-
-- Use token forte em producao
-- Defina `PDF_ALLOWED_ORIGINS` com origens explicitas
-- Mantenha rate limit habilitado
-- Evite expor templates internos desnecessarios
+| `503` | Sem token carregado no processo | `{ "message": "PDF_SERVICE_TOKEN não configurado." }` |
 
 ## Integracao com frontend
 
