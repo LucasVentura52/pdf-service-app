@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    :root {
+      --accent: #f57c00;
+      --accent-soft: #fff4e6;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --line: #e5e7eb;
+      --line-soft: #eef2f7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      color: var(--text-main);
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.45;
+      background: #fff;
+    }
+
+    .doc {
+      width: 100%;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 4mm;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 1mm 2.5mm rgba(17, 24, 39, 0.05);
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .hero-main {
+      display: grid;
+      grid-template-columns: 60mm 1fr;
+      gap: 5mm;
+      padding: 4mm;
+      background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+    }
+
+    .hero-media {
+      border: 1px solid var(--line);
+      border-radius: 3mm;
+      overflow: hidden;
+      height: 45mm;
+      background: #f3f4f6;
+    }
+
+    .hero-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 3mm;
+      margin-bottom: 1.4mm;
+    }
+
+    .code {
+      border: 1px solid #ffd8b3;
+      border-radius: 999px;
+      padding: 0.7mm 2mm;
+      background: var(--accent-soft);
+      color: #b45309;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status {
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      padding: 0.7mm 2mm;
+      background: #f9fafb;
+      color: #374151;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 70mm;
+    }
+
+    .price {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
+      font-weight: 700;
+      color: #c2410c;
+    }
+
+    .title {
+      margin: 0.9mm 0 1.2mm;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: #111827;
+      word-break: break-word;
+    }
+
+    .path {
+      margin: 0 0 2.2mm;
+      font-size: 11px;
+      color: #4b5563;
+      word-break: break-word;
+    }
+
+    .chip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5mm 1.8mm;
+    }
+
+    .chip {
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: #fff;
+      padding: 0.9mm 1.8mm;
+      font-size: 10px;
+      color: #374151;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .section {
+      margin-top: 4.6mm;
+    }
+
+    .section-head {
+      margin-bottom: 2.5mm;
+      display: flex;
+      align-items: center;
+      gap: 3mm;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: #dbe2ea;
+      position: relative;
+    }
+
+    .section-line::before {
+      content: "";
+      position: absolute;
+      inset: -0.5px auto -0.5px 0;
+      width: 30mm;
+      background: var(--accent);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2mm;
+    }
+
+    .summary-card {
+      border: 1px solid var(--line);
+      border-radius: 2.6mm;
+      background: #fff;
+      padding: 2.2mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .summary-label {
+      margin: 0;
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .summary-value {
+      margin: 0.8mm 0 0;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #111827;
+      word-break: break-word;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1px solid var(--line);
+      border-radius: 2.8mm;
+      overflow: hidden;
+    }
+
+    thead th {
+      background: #f3f4f6;
+      color: #1f2937;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 1px solid var(--line);
+      padding: 2mm 2.2mm;
+    }
+
+    tbody td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 2mm 2.2mm;
+      vertical-align: top;
+      font-size: 11px;
+      color: #1f2937;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: #fcfdff;
+    }
+
+    tbody tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    tfoot th {
+      background: #f8fafc;
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      padding: 2.1mm 2.2mm;
+    }
+
+    .num {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .empty {
+      border: 1px dashed #d1d5db;
+      border-radius: 2.4mm;
+      background: #f9fafb;
+      color: #6b7280;
+      font-style: italic;
+      padding: 2.6mm;
+    }
+
+    .generated {
+      margin-top: 2.5mm;
+      text-align: right;
+      color: #64748b;
+      font-size: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <article class="doc">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="hero-media">
+          <img src="{{vehicle.imagem}}" alt="Veículo" />
+        </div>
+
+        <div>
+          <div class="hero-head">
+            <div class="code">{{labels.code}}: {{vehicle.id}}</div>
+            <div class="status">{{vehicle.statusLabel}} - {{vehicle.ownershipLabel}}</div>
+          </div>
+
+          <p class="price">{{vehicle.preco}}</p>
+          <h1 class="title">{{vehicle.titulo}}</h1>
+          <p class="path">{{vehicle.caminho}}</p>
+
+          <div class="chip-grid">
+            <div class="chip">{{vehicle.placa}}</div>
+            <div class="chip">{{vehicle.ano}}</div>
+            <div class="chip">{{vehicle.km}}</div>
+            <div class="chip">{{vehicle.combustivel}}</div>
+            <div class="chip">{{labels.enginePower}}: {{vehicle.motor}}</div>
+            <div class="chip">{{vehicle.ownershipLabel}}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Resumo Financeiro</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <p class="summary-label">{{labels.summaryExpensesTotal}}</p>
+          <p class="summary-value">{{summary.expensesTotal}}</p>
+        </div>
+        <div class="summary-card">
+          <p class="summary-label">{{labels.summaryItemsCount}}</p>
+          <p class="summary-value">{{summary.itemsCount}}</p>
+        </div>
+        <div class="summary-card">
+          <p class="summary-label">{{labels.summarySaleValue}}</p>
+          <p class="summary-value">{{summary.saleValue}}</p>
+        </div>
+        <div class="summary-card">
+          <p class="summary-label">{{labels.summaryEntryValue}}</p>
+          <p class="summary-value">{{summary.entryValue}}</p>
+        </div>
+        <div class="summary-card">
+          <p class="summary-label">{{labels.summaryStoreProfit}}</p>
+          <p class="summary-value">{{summary.storeProfit}}</p>
+        </div>
+        <div class="summary-card">
+          <p class="summary-label">{{labels.summaryTotalToPay}}</p>
+          <p class="summary-value">{{summary.totalToPay}}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">{{labels.expensesTitle}}</h2>
+        <div class="section-line"></div>
+      </div>
+
+      {{#expenses.hasItems}}
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 22mm;">{{labels.date}}</th>
+            <th>{{labels.description}}</th>
+            <th class="num" style="width: 16mm;">{{labels.quantity}}</th>
+            <th class="num" style="width: 25mm;">{{labels.unitValue}}</th>
+            <th class="num" style="width: 25mm;">{{labels.subtotal}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#expenses.rows}}
+          <tr>
+            <td>{{data}}</td>
+            <td>{{descricao}}</td>
+            <td class="num">{{quantidade}}</td>
+            <td class="num">{{valorUnitario}}</td>
+            <td class="num">{{subtotal}}</td>
+          </tr>
+          {{/expenses.rows}}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="4" class="num">{{labels.total}}</th>
+            <th class="num">{{expenses.total}}</th>
+          </tr>
+        </tfoot>
+      </table>
+      {{/expenses.hasItems}}
+      {{^expenses.hasItems}}
+      <div class="empty">{{labels.emptyExpenses}}</div>
+      {{/expenses.hasItems}}
+    </section>
+
+    <div class="generated">Gerado em {{generatedAt}}</div>
+  </article>
+</body>
+
+</html>
