@@ -41,6 +41,7 @@ function parseTrustProxy(value) {
 const pdfServiceTokens = splitCsv(process.env.PDF_SERVICE_TOKEN);
 const pdfAllowedOrigins = splitCsv(process.env.PDF_ALLOWED_ORIGINS);
 const pdfPublicBaseUrl = String(process.env.PDF_PUBLIC_BASE_URL || "").trim();
+const corsOriginSeeds = pdfAllowedOrigins.length ? pdfAllowedOrigins : [pdfPublicBaseUrl].filter(Boolean);
 const pdfAllowedAssetOrigins = splitCsv(process.env.PDF_ALLOWED_ASSET_ORIGINS);
 const assetOriginSeeds = pdfAllowedAssetOrigins.length
   ? pdfAllowedAssetOrigins
@@ -63,7 +64,7 @@ export const config = {
   pdfAssetWaitTimeoutMs: Math.max(0, Number(process.env.PDF_ASSET_WAIT_TIMEOUT_MS || 600)),
   trustProxy: parseTrustProxy(process.env.PDF_TRUST_PROXY),
   normalizedAllowedOrigins: new Set(
-    pdfAllowedOrigins.map((origin) => normalizeOrigin(origin)).filter(Boolean)
+    corsOriginSeeds.map((origin) => normalizeOrigin(origin)).filter(Boolean)
   ),
   normalizedAllowedAssetOrigins: new Set(
     assetOriginSeeds
@@ -87,9 +88,15 @@ if (!config.pdfServiceTokens.length) {
   );
 }
 
+if (!pdfAllowedOrigins.length && config.normalizedAllowedOrigins.size) {
+  console.warn(
+    "[pdf-service] PDF_ALLOWED_ORIGINS vazio. Usando origem de PDF_PUBLIC_BASE_URL como fallback para CORS."
+  );
+}
+
 if (!config.normalizedAllowedOrigins.size) {
   console.warn(
-    "[pdf-service] PDF_ALLOWED_ORIGINS vazio: requests de browser com Origin serao bloqueadas."
+    "[pdf-service] PDF_ALLOWED_ORIGINS/PDF_PUBLIC_BASE_URL vazios: requests de browser com Origin serao bloqueadas."
   );
 }
 

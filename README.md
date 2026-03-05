@@ -42,7 +42,7 @@ cp .env.example .env
 |---|---|---|---|
 | `PORT` | não | Porta HTTP do servico | `3100` |
 | `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | sem padrão (`/pdf` retorna `503` se ausente) |
-| `PDF_ALLOWED_ORIGINS` | recomendada | Lista de origens CORS separadas por vírgula (`*` não é aceito) | vazio (bloqueia requests com `Origin`) |
+| `PDF_ALLOWED_ORIGINS` | recomendada | Lista de origens CORS separadas por vírgula (`*` não é aceito) | usa `PDF_PUBLIC_BASE_URL` quando vazio; sem ambos, bloqueia requests com `Origin` |
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
 | `PDF_ALLOWED_ASSET_ORIGINS` | recomendada | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização | usa origem de `PDF_PUBLIC_BASE_URL` quando definida |
 | `PDF_BLOCK_PRIVATE_NETWORK` | não | Quando `1`, bloqueia tentativas de acessar hosts privados/localhost durante a renderização | `1` |
