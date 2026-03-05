@@ -50,7 +50,7 @@ cp .env.example .env
 | `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra tempo total de cada geração no log | `0` |
 | `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de render (`load`, `domcontentloaded`, `networkidle`) quando o payload não define `options.waitUntil` | `domcontentloaded` |
 | `PDF_NETWORKIDLE_BUDGET_MS` | não | Tempo máximo para a tentativa inicial com `networkidle` antes de fallback para `domcontentloaded` | `1200` |
-| `PDF_ASSET_WAIT_TIMEOUT_MS` | não | Janela curta para aguardar fontes/imagens após `domcontentloaded` | `800` |
+| `PDF_ASSET_WAIT_TIMEOUT_MS` | não | Janela curta para aguardar fontes/imagens após `domcontentloaded` | `600` |
 | `PDF_CHROMIUM_CHANNEL` | não | Channel opcional para launch do Chromium (ex.: `chrome`) | vazio |
 | `PDF_CHROMIUM_EXECUTABLE_PATH` | não | Caminho absoluto para binario Chromium/Chrome | vazio |
 
@@ -67,7 +67,7 @@ PDF_MAX_CONCURRENT_JOBS=2
 PDF_LOG_PERFORMANCE=0
 PDF_DEFAULT_WAIT_UNTIL=domcontentloaded
 PDF_NETWORKIDLE_BUDGET_MS=1200
-PDF_ASSET_WAIT_TIMEOUT_MS=800
+PDF_ASSET_WAIT_TIMEOUT_MS=600
 ```
 
 ## Execução
@@ -133,7 +133,9 @@ Gera PDF e retorna o binario no corpo da resposta.
     "preferCSSPageSize": true,
     "displayHeaderFooter": false,
     "scale": 1,
-    "waitUntil": "networkidle",
+    "waitUntil": "domcontentloaded",
+    "readySelector": "#pdf-ready[data-ready='1']",
+    "readyTimeoutMs": 1400,
     "timeoutMs": 15000,
     "margin": {
       "top": "10mm",

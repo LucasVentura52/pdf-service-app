@@ -18,7 +18,7 @@ const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 const WAIT_UNTIL_OPTIONS = new Set(["load", "domcontentloaded", "networkidle"]);
 
 const PORT = Number(process.env.PORT || 3100);
-const DEFAULT_PDF_SERVICE_TOKEN = "36fb789bc9385f0c8b543e5d588adcd6caff4ee4e8a947c38a59af9ea3599e6570f53606b5d2abf925cc645a86a16921";
+const DEFAULT_PDF_SERVICE_TOKEN = "troque-este-token-em-producao";
 const PDF_SERVICE_TOKENS = String(process.env.PDF_SERVICE_TOKEN || DEFAULT_PDF_SERVICE_TOKEN)
   .split(",")
   .map((token) => token.trim())
@@ -32,7 +32,7 @@ const PDF_MAX_CONCURRENT_JOBS = Math.max(1, Number(process.env.PDF_MAX_CONCURREN
 const PDF_LOG_PERFORMANCE = String(process.env.PDF_LOG_PERFORMANCE || "").trim() === "1";
 const PDF_DEFAULT_WAIT_UNTIL = normalizeWaitUntil(process.env.PDF_DEFAULT_WAIT_UNTIL, "domcontentloaded");
 const PDF_NETWORKIDLE_BUDGET_MS = Math.max(300, Number(process.env.PDF_NETWORKIDLE_BUDGET_MS || 1200));
-const PDF_ASSET_WAIT_TIMEOUT_MS = Math.max(0, Number(process.env.PDF_ASSET_WAIT_TIMEOUT_MS || 800));
+const PDF_ASSET_WAIT_TIMEOUT_MS = Math.max(0, Number(process.env.PDF_ASSET_WAIT_TIMEOUT_MS || 600));
 const PDF_ALLOWED_ORIGINS = String(process.env.PDF_ALLOWED_ORIGINS || "*")
   .split(",")
   .map((item) => item.trim())
@@ -73,7 +73,9 @@ const pdfOptionsSchema = z
     preferCSSPageSize: z.boolean().default(true),
     displayHeaderFooter: z.boolean().default(false),
     scale: z.number().min(0.1).max(2).optional(),
-    waitUntil: z.enum(["load", "domcontentloaded", "networkidle"]).default("networkidle"),
+    waitUntil: z.enum(["load", "domcontentloaded", "networkidle"]).optional(),
+    readySelector: z.string().trim().min(1).max(160).optional(),
+    readyTimeoutMs: z.number().int().min(100).max(15000).optional(),
     timeoutMs: z.number().int().min(1000).max(60000).default(15000),
     margin: z
       .object({
@@ -321,11 +323,30 @@ async function setPageContentWithFallback(page, html, options) {
     usedFallbackWaitUntil = true;
   }
 
+  const readySelector = String(options?.readySelector || "").trim();
+  if (readySelector) {
+    const readyTimeoutMs = Math.min(options?.readyTimeoutMs || 1200, timeout);
+    await waitForReadySelector(page, readySelector, readyTimeoutMs);
+    return;
+  }
+
   const shouldWaitAssets =
     PDF_ASSET_WAIT_TIMEOUT_MS > 0 && (waitUntil === "domcontentloaded" || usedFallbackWaitUntil);
 
   if (shouldWaitAssets) {
     await waitForVisualAssets(page, PDF_ASSET_WAIT_TIMEOUT_MS);
+  }
+}
+
+async function waitForReadySelector(page, selector, timeoutMs) {
+  try {
+    await page.waitForSelector(selector, {
+      state: "attached",
+      timeout: timeoutMs,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[pdf-service] readySelector timeout para "${selector}": ${message}`);
   }
 }
 

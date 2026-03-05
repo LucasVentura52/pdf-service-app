@@ -464,7 +464,47 @@
     </footer>
 
     <div class="generated">Gerado em {{generatedAt}}</div>
+    <div id="pdf-ready" data-ready="0" style="display:none" aria-hidden="true"></div>
   </article>
+  <script>
+    (function markPdfReady() {
+      function setReady() {
+        var marker = document.getElementById("pdf-ready");
+        if (marker) marker.setAttribute("data-ready", "1");
+      }
+
+      function whenImagesReady() {
+        var images = Array.prototype.slice.call(document.images || []);
+        if (!images.length) return Promise.resolve();
+        return Promise.all(images.map(function (img) {
+          if (img.complete) return Promise.resolve();
+          return new Promise(function (resolve) {
+            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          });
+        }));
+      }
+
+      function run() {
+        Promise.resolve()
+          .then(whenImagesReady)
+          .then(function () {
+            if (document.fonts && document.fonts.ready) {
+              return document.fonts.ready.catch(function () { return null; });
+            }
+            return null;
+          })
+          .then(setReady)
+          .catch(setReady);
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run, { once: true });
+      } else {
+        run();
+      }
+    })();
+  </script>
 </body>
 
 </html>
