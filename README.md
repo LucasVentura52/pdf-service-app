@@ -46,6 +46,8 @@ cp .env.example .env
 | `PDF_PUBLIC_BASE_URL` | nao | Base para resolver assets relativos via `<base href=...>` | vazio |
 | `PDF_RATE_LIMIT_MAX` | nao | Limite de requests por minuto em `POST /pdf` | `40` |
 | `PDF_BODY_LIMIT` | nao | Limite do body JSON | `8mb` |
+| `PDF_CHROMIUM_CHANNEL` | nao | Channel opcional para launch do Chromium (ex.: `chrome`) | vazio |
+| `PDF_CHROMIUM_EXECUTABLE_PATH` | nao | Caminho absoluto para binario Chromium/Chrome | vazio |
 
 ### Exemplo de producao (Render)
 
@@ -71,6 +73,15 @@ Producao:
 ```bash
 npm start
 ```
+
+### Deploy na Render
+
+Configuracao recomendada:
+
+- Build Command: `npm install`
+- Start Command: `npm start`
+
+O `postinstall` do projeto ja executa `playwright install chromium` com `PLAYWRIGHT_BROWSERS_PATH=0`, garantindo que o browser fique dentro do artefato da aplicacao.
 
 ## Endpoints
 
@@ -189,6 +200,22 @@ Templates atuais:
 | `429` | Rate limit excedido | resposta padrao do `express-rate-limit` |
 | `500` | Falha interna na renderizacao | `{ "message": "Erro ao gerar PDF." }` |
 | `503` | Sem token carregado no processo | `{ "message": "PDF_SERVICE_TOKEN nao configurado." }` |
+
+## Troubleshooting
+
+### `500 Erro ao gerar PDF.`
+
+Verifique no log do servico:
+
+1. Se houve falha para iniciar o browser (`chromium.launch`)
+2. Se houve timeout de renderizacao (`setContent`)
+
+Checklist:
+
+- Confirmar se o deploy executou `postinstall` (Playwright Chromium instalado)
+- Confirmar token e CORS (`PDF_SERVICE_TOKEN`, `PDF_ALLOWED_ORIGINS`)
+- Reiniciar o servico apos alterar variaveis de ambiente
+- Se necessario, informar `PDF_CHROMIUM_EXECUTABLE_PATH` com um binario valido
 
 ## Seguranca
 
