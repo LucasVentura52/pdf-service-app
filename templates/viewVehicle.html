@@ -73,6 +73,17 @@
       object-fit: cover;
     }
 
+    .hero-media-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-size: 10px;
+      background: #f3f4f6;
+    }
+
     .hero-header {
       display: flex;
       align-items: center;
@@ -379,7 +390,19 @@
     <section class="hero">
       <div class="hero-main">
         <div class="hero-media">
-          <img src="{{vehicle.imagem}}" alt="Veículo" />
+          {{#vehicle.imagem}}<img src="{{vehicle.imagem}}" alt="Veículo" />{{/vehicle.imagem}}
+          {{^vehicle.imagem}}
+          {{#vehicle.foto}}<img src="{{vehicle.foto}}" alt="Veículo" />{{/vehicle.foto}}
+          {{^vehicle.foto}}
+          {{#vehicle.imagemPrincipal}}<img src="{{vehicle.imagemPrincipal}}" alt="Veículo" />{{/vehicle.imagemPrincipal}}
+          {{^vehicle.imagemPrincipal}}
+          {{#vehicle.fotoPrincipal}}<img src="{{vehicle.fotoPrincipal}}" alt="Veículo" />{{/vehicle.fotoPrincipal}}
+          {{^vehicle.fotoPrincipal}}
+          <div class="hero-media-fallback">Imagem do veículo indisponível</div>
+          {{/vehicle.fotoPrincipal}}
+          {{/vehicle.imagemPrincipal}}
+          {{/vehicle.foto}}
+          {{/vehicle.imagem}}
         </div>
 
         <div>
@@ -460,6 +483,12 @@
 
       {{#company.logo}}
       <img class="logo" src="{{company.logo}}" alt="Logo" />
+      {{/company.logo}}
+      {{^company.logo}}
+      {{#garage.foto}}<img class="logo" src="{{garage.foto}}" alt="Foto da garagem" />{{/garage.foto}}
+      {{^garage.foto}}
+      {{#garage.imagem}}<img class="logo" src="{{garage.imagem}}" alt="Foto da garagem" />{{/garage.imagem}}
+      {{/garage.foto}}
       {{/company.logo}}
     </footer>
 
