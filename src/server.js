@@ -17,7 +17,8 @@ const __dirname = path.dirname(__filename);
 const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 
 const PORT = Number(process.env.PORT || 3100);
-const PDF_SERVICE_TOKENS = String(process.env.PDF_SERVICE_TOKEN || "")
+const DEFAULT_PDF_SERVICE_TOKEN = "troque-este-token-em-producao";
+const PDF_SERVICE_TOKENS = String(process.env.PDF_SERVICE_TOKEN || DEFAULT_PDF_SERVICE_TOKEN)
   .split(",")
   .map((token) => token.trim())
   .filter(Boolean);
@@ -31,6 +32,12 @@ const PDF_ALLOWED_ORIGINS = String(process.env.PDF_ALLOWED_ORIGINS || "*")
 const NORMALIZED_ALLOWED_ORIGINS = new Set(
   PDF_ALLOWED_ORIGINS.map((origin) => normalizeOrigin(origin)).filter(Boolean)
 );
+
+if (!process.env.PDF_SERVICE_TOKEN) {
+  console.warn(
+    "[pdf-service] PDF_SERVICE_TOKEN ausente. Usando token padrao de fallback; configure a variavel em producao."
+  );
+}
 
 const marginValueSchema = z
   .string()
