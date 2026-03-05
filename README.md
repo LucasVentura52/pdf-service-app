@@ -27,13 +27,13 @@ No servico `pdf-service-app` da Render, configure:
 
 ```bash
 PDF_SERVICE_TOKEN=troque-este-token-em-producao
-PDF_ALLOWED_ORIGINS=https://sys.maisgerencia.com.br
+PDF_ALLOWED_ORIGINS=https://sys.maisgerencia.com.br,http://localhost:5173,http://localhost:5174
 PDF_PUBLIC_BASE_URL=https://sys.maisgerencia.com.br
 PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
 ```
 
-No frontend (Render), configure:
+No frontend (Render e local), configure:
 
 ```bash
 VITE_PDF_SERVICE_URL=https://pdf-service-app.onrender.com/pdf
