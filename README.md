@@ -41,7 +41,7 @@ cp .env.example .env
 | Variável | Obrigatória | Descrição | Padrão |
 |---|---|---|---|
 | `PORT` | não | Porta HTTP do servico | `3100` |
-| `PDF_SERVICE_TOKEN` | sim | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | sem padrão (startup bloqueia se ausente) |
+| `PDF_SERVICE_TOKEN` | recomendada | Token aceito no header `x-pdf-token` (suporta lista separada por vírgula) | sem padrão (`/pdf` retorna `503` se ausente) |
 | `PDF_ALLOWED_ORIGINS` | recomendada | Lista de origens CORS separadas por vírgula (`*` não é aceito) | vazio (bloqueia requests com `Origin`) |
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
 | `PDF_ALLOWED_ASSET_ORIGINS` | recomendada | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização | usa origem de `PDF_PUBLIC_BASE_URL` quando definida |
@@ -231,7 +231,7 @@ Templates atuais:
 | `404` | `templateId` não encontrado | `{ "message": "Template '<id>' nao encontrado." }` |
 | `429` | Rate limit excedido | resposta padrao do `express-rate-limit` |
 | `500` | Falha interna na renderizacao | `{ "message": "Erro ao gerar PDF." }` |
-| `503` | Browser do Playwright indisponivel ou fila de geração saturada/expirada | `{ "message": "Playwright browser nao instalado no ambiente..." }` / `{ "message": "Fila de geração lotada..." }` / `{ "message": "Tempo limite na fila..." }` |
+| `503` | Token não configurado, browser do Playwright indisponivel ou fila de geração saturada/expirada | `{ "message": "PDF_SERVICE_TOKEN nao configurado." }` / `{ "message": "Playwright browser nao instalado no ambiente..." }` / `{ "message": "Fila de geração lotada..." }` / `{ "message": "Tempo limite na fila..." }` |
 
 ## Integraçao com frontend
 

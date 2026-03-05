@@ -74,17 +74,17 @@ export const config = {
 };
 
 export function assertCriticalConfig() {
-  if (!config.pdfServiceTokens.length) {
-    throw new Error(
-      "[pdf-service] PDF_SERVICE_TOKEN obrigatorio. Configure token(s) forte(s) no ambiente."
-    );
-  }
-
   if (config.normalizedAllowedOrigins.has("*")) {
     throw new Error(
       "[pdf-service] PDF_ALLOWED_ORIGINS nao pode conter '*'. Configure origens explicitas."
     );
   }
+}
+
+if (!config.pdfServiceTokens.length) {
+  console.warn(
+    "[pdf-service] PDF_SERVICE_TOKEN nao configurado. Endpoint /pdf respondera 503 ate que o token seja definido."
+  );
 }
 
 if (!config.normalizedAllowedOrigins.size) {
