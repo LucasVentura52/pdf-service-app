@@ -6,7 +6,8 @@
   "scripts": {
     "postinstall": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
     "dev": "PLAYWRIGHT_BROWSERS_PATH=0 node --watch src/server.js",
-    "start": "PLAYWRIGHT_BROWSERS_PATH=0 node src/server.js"
+    "start": "PLAYWRIGHT_BROWSERS_PATH=0 node src/server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "cors": "^2.8.5",
