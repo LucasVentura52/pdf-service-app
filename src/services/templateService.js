@@ -11,6 +11,65 @@ export class TemplateNotFoundError extends Error {
   }
 }
 
+function hasVisibleReportValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "number" || typeof value === "boolean") return true;
+
+  if (typeof value === "string") {
+    return value.replace(/[\s\u00a0]+/g, "").length > 0;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => hasVisibleReportValue(item));
+  }
+
+  if (typeof value === "object") {
+    if ("value" in value) {
+      return hasVisibleReportValue(value.value);
+    }
+
+    if ("text" in value) {
+      return hasVisibleReportValue(value.text);
+    }
+  }
+
+  return false;
+}
+
+function sanitizeReportSectionRows(section) {
+  if (!section || !Array.isArray(section.rows)) {
+    return section;
+  }
+
+  const rows = section.rows.filter((row) => {
+    if (!row || !Array.isArray(row.cells)) {
+      return true;
+    }
+
+    return row.cells.some((cell) => hasVisibleReportValue(cell));
+  });
+
+  return {
+    ...section,
+    rows,
+  };
+}
+
+export function sanitizeTemplateData(templateId, data) {
+  if (String(templateId || "").trim() !== "report" || !data || typeof data !== "object") {
+    return data || {};
+  }
+
+  const sections = Array.isArray(data.sections)
+    ? data.sections.map((section) => sanitizeReportSectionRows(section))
+    : data.sections;
+
+  return {
+    ...data,
+    sections,
+  };
+}
+
 export function createTemplateService({ templateDir }) {
   const resolvedTemplateDir = path.resolve(templateDir);
   const templateCache = new Map();
@@ -47,7 +106,7 @@ export function createTemplateService({ templateDir }) {
   async function resolveHtmlFromPayload(payload) {
     if (payload.templateId) {
       const template = await loadTemplate(payload.templateId);
-      return Mustache.render(template, payload.data || {});
+      return Mustache.render(template, sanitizeTemplateData(payload.templateId, payload.data));
     }
     return payload.html || "";
   }
