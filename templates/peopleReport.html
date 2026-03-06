@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: rgba(0, 0, 0, 0.87);
+      font-family: Roboto, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .report-card {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .report-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.68);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+
+    col {
+      width: auto;
+    }
+
+    thead th {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      color: rgba(0, 0, 0, 0.87);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      background: #ffffff;
+    }
+
+    tbody td,
+    .report-total {
+      padding: 12px 16px;
+      color: rgba(0, 0, 0, 0.72);
+      font-size: 12px;
+    }
+
+    tbody td {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      vertical-align: top;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      background: #ffffff;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(0, 0, 0, 0.025);
+    }
+
+    .report-total {
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      color: rgba(0, 0, 0, 0.87);
+      font-weight: 700;
+      text-align: right;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+
+    .is-center {
+      text-align: center;
+    }
+
+    .is-right {
+      text-align: right;
+    }
+
+    .is-code {
+      color: rgba(0, 0, 0, 0.6);
+      white-space: nowrap;
+    }
+
+    .is-nowrap {
+      white-space: nowrap;
+    }
+
+    .is-preserve-lines {
+      white-space: pre-wrap;
+    }
+
+    .empty {
+      text-align: center;
+      color: rgba(0, 0, 0, 0.6);
+      font-weight: 500;
+      padding: 28px 16px;
+    }
+
+    .is-compact thead th,
+    .is-compact tbody td,
+    .is-compact .report-total {
+      padding: 10px 12px;
+      font-size: 11px;
+    }
+
+    .is-ultra-compact thead th,
+    .is-ultra-compact tbody td,
+    .is-ultra-compact .report-total {
+      padding: 8px 10px;
+      font-size: 10px;
+    }
+  </style>
+</head>
+
+<body class="{{#compact}}is-compact{{/compact}} {{#ultraCompact}}is-ultra-compact{{/ultraCompact}}">
+  {{#title}}
+  <h1 class="report-title">{{title}}</h1>
+  {{/title}}
+  <div class="report-card">
+    <table>
+      <colgroup>
+        {{#columns}}
+        <col style="width: {{widthPercent}}%" />
+        {{/columns}}
+      </colgroup>
+      <thead>
+        <tr>
+          {{#columns}}
+          <th class="{{className}}">{{label}}</th>
+          {{/columns}}
+        </tr>
+      </thead>
+      <tbody>
+        {{#rows}}
+        <tr>
+          {{#cells}}
+          <td class="{{className}}">{{value}}</td>
+          {{/cells}}
+        </tr>
+        {{/rows}}
+        {{^rows}}
+        <tr>
+          <td colspan="{{columnsCount}}" class="empty">{{emptyLabel}}</td>
+        </tr>
+        {{/rows}}
+      </tbody>
+    </table>
+    {{#totalCountLabel}}
+    <div class="report-total">{{totalCountLabel}}</div>
+    {{/totalCountLabel}}
+  </div>
+</body>
+
+</html>

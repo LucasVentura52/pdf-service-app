@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: rgba(0, 0, 0, 0.87);
+      font-family: Roboto, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .report-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.68);
+    }
+
+    .report-card {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      overflow: visible;
+      padding-bottom: 2px;
+    }
+
+    .meta-grid {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+      padding: 12px 16px 4px;
+    }
+
+    .meta-column {
+      display: table-cell;
+      vertical-align: top;
+      width: 50%;
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 11px;
+    }
+
+    .meta-column.is-right {
+      text-align: right;
+    }
+
+    .meta-line {
+      margin: 0 0 2px;
+      white-space: pre-wrap;
+    }
+
+    .meta-line.is-strong {
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.75);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+
+    thead th {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      color: rgba(0, 0, 0, 0.87);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      background: #ffffff;
+    }
+
+    tbody td,
+    tfoot td {
+      padding: 12px 16px;
+      color: rgba(0, 0, 0, 0.72);
+      font-size: 12px;
+    }
+
+    tbody td {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      vertical-align: top;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      background: #ffffff;
+    }
+
+    tbody tr.is-detail-row td {
+      padding-top: 10px;
+      padding-bottom: 10px;
+      background: rgba(0, 0, 0, 0.02);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(0, 0, 0, 0.025);
+    }
+
+    tfoot {
+      display: table-row-group;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    tfoot td {
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.87);
+      background: #ffffff;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      line-height: 1.5;
+    }
+
+    .is-center {
+      text-align: center;
+    }
+
+    .is-right {
+      text-align: right;
+    }
+
+    .cell-value {
+      display: inline;
+    }
+
+    .cell-value.is-nowrap,
+    .cell-value.is-currency {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+
+    .cell-value.is-currency {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .empty {
+      text-align: center;
+      color: rgba(0, 0, 0, 0.6);
+      font-weight: 500;
+      padding: 28px 16px;
+    }
+
+    .detail-line {
+      display: block;
+      margin: 0 0 3px;
+      white-space: pre-wrap;
+    }
+
+    .detail-line:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-label {
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .detail-value {
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.82);
+    }
+
+    .detail-card {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .detail-media,
+    .detail-main,
+    .detail-meta,
+    .detail-financial {
+      display: table-cell;
+      vertical-align: middle;
+    }
+
+    .detail-media {
+      width: 16%;
+    }
+
+    .detail-main {
+      width: 32%;
+      padding-left: 12px;
+    }
+
+    .detail-meta {
+      width: 20%;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .detail-financial {
+      width: 32%;
+      text-align: right;
+    }
+
+    .detail-image-box {
+      width: 140px;
+      height: 90px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .detail-image-box img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .detail-text-muted {
+      color: rgba(0, 0, 0, 0.6);
+      font-size: 11px;
+    }
+
+    .detail-text-strong {
+      color: rgba(0, 0, 0, 0.86);
+      font-weight: 700;
+    }
+
+    .detail-stack > div {
+      margin-bottom: 4px;
+    }
+
+    .detail-stack > div:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+
+<body>
+  {{#title}}
+  <h1 class="report-title">{{title}}</h1>
+  {{/title}}
+  <div class="report-card">
+    {{#hasMeta}}
+    <div class="meta-grid">
+      <div class="meta-column">
+        {{#metaLeftLines}}
+        <div class="meta-line {{className}}">{{value}}</div>
+        {{/metaLeftLines}}
+      </div>
+      <div class="meta-column is-right">
+        {{#metaRightLines}}
+        <div class="meta-line {{className}}">{{value}}</div>
+        {{/metaRightLines}}
+      </div>
+    </div>
+    {{/hasMeta}}
+    <table>
+      <colgroup>
+        {{#columns}}
+        <col style="width: {{widthPercent}}%" />
+        {{/columns}}
+      </colgroup>
+      <thead>
+        <tr>
+          {{#columns}}
+          <th class="{{className}}">{{label}}</th>
+          {{/columns}}
+        </tr>
+      </thead>
+      <tbody>
+        {{#rows}}
+        <tr class="{{rowClassName}}">
+          {{#cells}}
+          <td colspan="{{colspan}}" class="{{className}}">
+            <span class="cell-value {{valueClassName}}">{{value}}</span>
+            {{#caption}}<span class="detail-line">{{caption}}</span>{{/caption}}
+            {{#detailCard}}
+            <div class="detail-card">
+              <div class="detail-media">
+                <div class="detail-image-box">
+                  <img src="{{image}}" alt="{{imageAlt}}" />
+                </div>
+              </div>
+              <div class="detail-main">
+                <div class="detail-stack">
+                  <div class="detail-text-muted">{{codeFuel}}</div>
+                  <div class="detail-text-strong">{{model}}</div>
+                </div>
+              </div>
+              <div class="detail-meta">
+                <div class="detail-stack">
+                  <div class="detail-text-muted">{{year}}</div>
+                  <div class="detail-text-strong">{{plate}}</div>
+                </div>
+              </div>
+              <div class="detail-financial">
+                <div class="detail-stack">
+                  <div><span class="detail-text-muted">{{entryLabel}}</span> <span class="detail-text-strong">{{entryValue}}</span></div>
+                  <div><span class="detail-text-muted">{{expenseLabel}}</span> <span class="detail-text-strong">{{expenseValue}}</span></div>
+                </div>
+              </div>
+            </div>
+            {{/detailCard}}
+            {{#detailLines}}
+            <span class="detail-line"><span class="detail-label">{{label}}</span> <span class="detail-value">{{value}}</span></span>
+            {{/detailLines}}
+          </td>
+          {{/cells}}
+        </tr>
+        {{/rows}}
+        {{^rows}}
+        <tr>
+          <td colspan="{{columnsCount}}" class="empty">{{emptyLabel}}</td>
+        </tr>
+        {{/rows}}
+      </tbody>
+      {{#footerRow}}
+      <tfoot>
+        <tr>
+          {{#cells}}
+          <td class="{{className}}"><span class="cell-value {{valueClassName}}">{{value}}</span></td>
+          {{/cells}}
+        </tr>
+      </tfoot>
+      {{/footerRow}}
+    </table>
+  </div>
+</body>
+
+</html>

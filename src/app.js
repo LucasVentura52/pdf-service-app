@@ -11,6 +11,7 @@ import { createRequireToken } from "./middleware/requireToken.js";
 import { createHealthRouter } from "./routes/healthRoute.js";
 import { createPdfRouter } from "./routes/pdfRoute.js";
 import { createBrowserService } from "./services/browserService.js";
+import { createNativeReportPdfService } from "./services/nativeReportPdfService.js";
 import { createPdfQueue } from "./services/pdfQueue.js";
 import { createTemplateService } from "./services/templateService.js";
 
@@ -21,6 +22,7 @@ const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 function buildApp() {
   const templateService = createTemplateService({ templateDir: TEMPLATE_DIR });
   const browserService = createBrowserService(config);
+  const nativeReportPdfService = createNativeReportPdfService();
   const pdfQueue = createPdfQueue({
     maxConcurrentJobs: config.pdfMaxConcurrentJobs,
     maxPendingJobs: config.pdfMaxPendingJobs,
@@ -44,7 +46,14 @@ function buildApp() {
   app.use(morgan("tiny"));
   app.use("/pdf", createPdfRateLimit(config.pdfRateLimitMax));
 
-  app.use(createHealthRouter());
+  app.use(
+    createHealthRouter({
+      pdfQueue,
+      browserService,
+      templateService,
+      config,
+    })
+  );
   app.use(
     "/pdf",
     createPdfRouter({
@@ -52,6 +61,7 @@ function buildApp() {
       pdfQueue,
       templateService,
       browserService,
+      nativeReportPdfService,
       config,
     })
   );

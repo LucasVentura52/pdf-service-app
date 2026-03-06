@@ -7,67 +7,169 @@
   <style>
     @page {
       size: A4;
-      margin: 14mm;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
       padding: 0;
-      color: #111827;
-      font-family: "Times New Roman", serif;
+      color: #1f2937;
+      background: #ffffff;
+      font-family: Roboto, Arial, sans-serif;
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 1.6;
       text-align: justify;
     }
 
     .contract {
       width: 100%;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .contract-header {
+      padding: 18px 22px 14px;
+      background:
+        linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, rgba(15, 23, 42, 0.03), rgba(15, 23, 42, 0));
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .contract-kicker {
+      margin: 0 0 8px;
+      color: #f97316;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
 
     .contract-title {
-      margin: 0 0 5mm;
-      text-align: center;
-      font-size: 18px;
+      margin: 0;
+      text-align: left;
+      font-size: 22px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+    }
+
+    .contract-body {
+      padding: 20px 22px 24px;
+    }
+
+    .parties-grid {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+      margin: 0 0 20px;
     }
 
     .party-block {
-      margin-bottom: 4mm;
+      display: table-cell;
+      width: 50%;
+      padding: 0 6px;
+      vertical-align: top;
+    }
+
+    .party-card {
+      min-height: 100%;
+      padding: 14px 16px;
+      background: rgba(15, 23, 42, 0.025);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 12px;
     }
 
     .party-title {
-      font-size: 12px;
+      display: inline-block;
+      margin: 0 0 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(249, 115, 22, 0.12);
+      color: #c2410c;
+      font-size: 11px;
       font-weight: 700;
-      margin-bottom: 1.5mm;
       text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .party-text {
+      margin: 0;
+      color: #334155;
+      white-space: pre-wrap;
     }
 
     p {
-      margin: 0 0 3.2mm;
+      margin: 0 0 12px;
+      white-space: pre-wrap;
+    }
+
+    .clauses {
+      margin-top: 4px;
+    }
+
+    .clause {
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-left: 4px solid rgba(249, 115, 22, 0.8);
+      border-radius: 12px;
+      background: #ffffff;
+      page-break-inside: avoid;
     }
 
     .clause-title {
-      margin-top: 4.5mm;
-      margin-bottom: 1.2mm;
+      margin: 0 0 8px;
       font-weight: 700;
-      text-transform: uppercase;
-      font-size: 12px;
+      text-transform: none;
+      font-size: 13px;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+
+    .clause-text {
+      margin: 0;
+      color: #334155;
+      white-space: pre-wrap;
+    }
+
+    .extra-paragraphs {
+      margin-top: 18px;
+      color: #334155;
     }
 
     .signature-grid {
-      margin-top: 16mm;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10mm;
+      margin-top: 28px;
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+      border-spacing: 12px 0;
+    }
+
+    .signature-cell {
+      display: table-cell;
+      width: 50%;
+      vertical-align: bottom;
     }
 
     .signature-line {
-      border-top: 1px solid #111827;
-      padding-top: 1.8mm;
+      padding-top: 16px;
+      border-top: 1px solid rgba(15, 23, 42, 0.3);
       text-align: center;
       font-size: 11px;
+      color: #475569;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .signature-spacer {
+      height: 44px;
     }
 
     .page-break {
@@ -79,33 +181,54 @@
 
 <body>
   <article class="contract">
-    <h1 class="contract-title">{{title}}</h1>
+    <header class="contract-header">
+      <div class="contract-kicker">Documento Contratual</div>
+      <h1 class="contract-title">{{title}}</h1>
+    </header>
 
-    <section class="party-block">
-      <div class="party-title">Contratante</div>
-      <p>{{contractor.text}}</p>
-    </section>
+    <div class="contract-body">
+      <section class="parties-grid">
+        <div class="party-block">
+          <div class="party-card">
+            <div class="party-title">Contratante</div>
+            <p class="party-text">{{contractor.text}}</p>
+          </div>
+        </div>
 
-    <section class="party-block">
-      <div class="party-title">Contratado</div>
-      <p>{{contracted.text}}</p>
-    </section>
+        <div class="party-block">
+          <div class="party-card">
+            <div class="party-title">Contratado</div>
+            <p class="party-text">{{contracted.text}}</p>
+          </div>
+        </div>
+      </section>
 
-    {{#clauses}}
-    <section>
-      <h2 class="clause-title">{{title}}</h2>
-      <p>{{text}}</p>
-    </section>
-    {{/clauses}}
+      <section class="clauses">
+        {{#clauses}}
+        <section class="clause">
+          <h2 class="clause-title">{{title}}</h2>
+          <p class="clause-text">{{text}}</p>
+        </section>
+        {{/clauses}}
+      </section>
 
-    {{#extraParagraphs}}
-    <p>{{.}}</p>
-    {{/extraParagraphs}}
+      <section class="extra-paragraphs">
+        {{#extraParagraphs}}
+        <p>{{.}}</p>
+        {{/extraParagraphs}}
+      </section>
 
-    <section class="signature-grid">
-      <div class="signature-line">{{contractor.signatureLabel}}</div>
-      <div class="signature-line">{{contracted.signatureLabel}}</div>
-    </section>
+      <section class="signature-grid">
+        <div class="signature-cell">
+          <div class="signature-spacer"></div>
+          <div class="signature-line">{{contractor.signatureLabel}}</div>
+        </div>
+        <div class="signature-cell">
+          <div class="signature-spacer"></div>
+          <div class="signature-line">{{contracted.signatureLabel}}</div>
+        </div>
+      </section>
+    </div>
   </article>
 </body>
 

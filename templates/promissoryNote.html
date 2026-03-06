@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page { size: A4; margin: 8mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: "Times New Roman", serif; color: #111; background: #fff; }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+    .note-col { margin-bottom: 5mm; }
+    .note {
+      width: 100%;
+      border-radius: 0;
+      border: 0;
+      background: transparent;
+      padding: 6px 6px 6px 14px;
+      line-height: 1.35;
+    }
+    .header-row { display: table; width: 100%; margin-bottom: 4px; }
+    .header-cell { display: table-cell; vertical-align: middle; }
+    .header-cell.is-right { text-align: right; }
+    .logo { max-width: 130px; height: 38px; object-fit: contain; }
+    .pill {
+      display: inline-block;
+      min-width: 78px;
+      padding: 1px 6px;
+      border: 1px solid #111;
+      border-radius: 999px;
+      background: transparent;
+      text-align: center;
+      font-weight: 700;
+    }
+    .label-strong { font-weight: 700; }
+    .body-text { font-size: 12px; text-align: justify; }
+    .line { margin-top: 8px; font-size: 12px; }
+    .inline-group { display: inline-block; white-space: nowrap; vertical-align: baseline; }
+    .inline-group + .inline-group { margin-left: 8px; }
+    .field-inline { display: inline-block; min-width: 120px; border-bottom: 1px solid #111; padding: 0 3px 1px; white-space: nowrap; vertical-align: baseline; }
+    .field-wide { display: inline-block; min-width: 260px; border-bottom: 1px solid #111; padding: 0 3px 1px; white-space: nowrap; vertical-align: baseline; }
+    .field-wide.is-emitente { min-width: 210px; }
+    .field-wide.is-endereco { min-width: 300px; }
+    .field-inline.is-contato { min-width: 82px; }
+    .field-inline.is-data-emissao { min-width: 86px; }
+    .field-inline.is-cpf { min-width: 120px; }
+    .signature-wrap { margin-top: 14px; display: flex; align-items: flex-start; width: 100%; }
+    .signature-label { white-space: nowrap; margin-right: 10px; padding-top: 7px; }
+    .signature-field { flex: 1 1 auto; min-width: 0; }
+    .signature-line { border-bottom: 1px solid #111; height: 14px; margin-top: 7px; width: 100%; }
+    .signature-name { margin-top: 3px; font-size: 11px; text-align: center; width: 100%; }
+    .cut-line {
+      position: relative;
+      margin: 3mm 0 0;
+      border-top: 1px dashed #555;
+      height: 1px;
+    }
+    .cut-line span {
+      position: absolute;
+      left: 50%;
+      top: -9px;
+      transform: translateX(-50%);
+      background: #fff;
+      padding: 0 6px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  {{#pages}}
+  <div class="page">
+    {{#notes}}
+    <div class="note-col">
+      <div class="note">
+        <div class="header-row">
+          <div class="header-cell">
+            {{#logoUrl}}<img src="{{logoUrl}}" alt="Logo" class="logo" />{{/logoUrl}}
+          </div>
+          <div class="header-cell is-right">
+            <span class="label-strong">Nº</span>
+            <span class="pill">{{numero}}</span>
+            <span class="label-strong" style="margin-left: 12px;">Vencimento:</span>
+            <span class="label-strong">{{vencimento}}</span>
+            <span class="label-strong" style="margin-left: 12px;">R$</span>
+            <span class="pill">{{valor}}</span>
+          </div>
+        </div>
+
+        <div class="body-text">
+          Ao(s) <span class="field-inline">{{dataPorExtenso}}</span>
+          pagarei por esta única via de <b>NOTA PROMISSÓRIA</b>
+          a <span class="field-inline">{{favorecido}}</span>.
+          CPF/CNPJ <span class="field-inline">{{cpfFavorecido}}</span>.
+          Ou à sua ordem, a quantia de <span class="field-wide">{{valorExtenso}}</span>
+          em moeda corrente deste país, pagável em <span class="field-inline">{{localPagamento}}</span>.
+        </div>
+
+        <div class="line">
+          <span class="inline-group">EMITENTE <span class="field-wide is-emitente">{{emitente}}</span></span>
+          <span class="inline-group">CONTATO <span class="field-inline is-contato">{{contatoEmitente}}</span></span>
+          <span class="inline-group">DATA DA EMISSÃO <span class="field-inline is-data-emissao">{{dataEmissao}}</span></span>
+        </div>
+
+        <div class="line">
+          <span class="inline-group">CPF/CNPJ <span class="field-inline is-cpf">{{cpfEmitente}}</span></span>
+          <span class="inline-group">ENDEREÇO <span class="field-wide is-endereco">{{enderecoEmitente}}</span></span>
+        </div>
+
+        <div class="signature-wrap">
+          <div class="signature-label">ASS. DO EMITENTE</div>
+          <div class="signature-field">
+            <div class="signature-line"></div>
+            <div class="signature-name">{{emitente}}</div>
+          </div>
+        </div>
+      </div>
+      <div class="cut-line"><span>✂</span></div>
+    </div>
+    {{/notes}}
+  </div>
+  {{/pages}}
+</body>
+</html>

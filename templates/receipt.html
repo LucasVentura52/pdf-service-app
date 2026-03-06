@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; background: #fff; color: #111827; font-family: Roboto, Arial, sans-serif; }
+    .copy { page-break-after: always; }
+    .copy:last-child { page-break-after: auto; }
+    .receipt {
+      padding: 18px;
+      background: #fff;
+    }
+    .header { display: table; width: 100%; table-layout: fixed; }
+    .header-col { display: table-cell; vertical-align: top; width: 50%; }
+    .header-col.is-right { text-align: right; }
+    .logo { width: 220px; max-height: 70px; object-fit: contain; }
+    .headline { font-size: 20px; font-weight: 800; }
+    .small { font-size: 12px; color: rgba(0,0,0,0.68); margin-top: 3px; }
+    .section {
+      margin-top: 16px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .section-title {
+      background: #f3f4f6;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .grid { display: table; width: 100%; table-layout: fixed; }
+    .row { display: table-row; }
+    .cell {
+      display: table-cell;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      border-right: 1px solid rgba(0,0,0,0.08);
+      font-size: 13px;
+    }
+    .row:first-child .cell { border-top: 0; }
+    .cell:last-child { border-right: 0; }
+    .label { font-size: 11px; color: rgba(0,0,0,0.58); margin-bottom: 4px; }
+    .value { font-size: 13px; color: rgba(0,0,0,0.84); }
+    .value.is-strong { font-weight: 700; }
+    .center-note { margin-top: 18px; text-align: center; font-size: 14px; line-height: 1.6; }
+    .observations { padding: 12px; font-size: 13px; line-height: 1.5; }
+    .signatures { display: table; width: 100%; table-layout: fixed; margin-top: 70px; }
+    .signature { display: table-cell; width: 50%; padding: 0 20px; text-align: center; }
+    .signature-line { border-top: 1px solid #111; padding-top: 8px; font-size: 13px; }
+    .signature-doc { font-size: 12px; color: rgba(0,0,0,0.68); }
+  </style>
+</head>
+<body>
+  {{#copies}}
+  <div class="copy">
+    <div class="receipt">
+      <div class="header">
+        <div class="header-col">
+          {{#logoGaragem}}<img src="{{logoGaragem}}" alt="Logo" class="logo" />{{/logoGaragem}}
+          <div style="margin-top:10px;">
+            <div style="font-weight:700;">{{razaoSocialRecebedor}}</div>
+            <div class="small">CNPJ: {{documentoRecebedor}}</div>
+            <div class="small">Endereço: {{enderecoGaragemLinha}}</div>
+          </div>
+        </div>
+        <div class="header-col is-right">
+          <div class="headline">{{receiptTitle}} - {{label}}</div>
+          <div class="small">Parcela: {{parcelaResumo}}</div>
+          <div class="small">Data da Baixa: {{dataBaixa}}</div>
+          <div class="small">Código do recibo: {{codigoBaixa}}</div>
+        </div>
+      </div>
+
+      {{#showPedido}}
+      <div class="section">
+        <div class="section-title">Informações do Pedido</div>
+        <div class="grid">
+          <div class="row">
+            <div class="cell">
+              <div class="label">Vendedor</div>
+              <div class="value">{{vendedor}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Código do orçamento</div>
+              <div class="value">{{referencia}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Data de Competência</div>
+              <div class="value">{{dataCompetencia}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/showPedido}}
+
+      <div class="section">
+        <div class="section-title">Dados do Cliente</div>
+        <div class="grid">
+          <div class="row">
+            <div class="cell">
+              <div class="label">Nome / Razão Social</div>
+              <div class="value">{{nomeExibido}}</div>
+            </div>
+            {{#showNomeFantasiaDevedor}}
+            <div class="cell">
+              <div class="label">Nome Fantasia</div>
+              <div class="value">{{nomeFantasiaDevedor}}</div>
+            </div>
+            {{/showNomeFantasiaDevedor}}
+            {{#showDocumentoCliente}}
+            <div class="cell">
+              <div class="label">{{documentoClienteLabel}}</div>
+              <div class="value">{{documentoCliente}}</div>
+            </div>
+            {{/showDocumentoCliente}}
+            {{#showSexo}}
+            <div class="cell">
+              <div class="label">Sexo</div>
+              <div class="value">{{sexo}}</div>
+            </div>
+            {{/showSexo}}
+          </div>
+          <div class="row">
+            <div class="cell">
+              <div class="label">Endereço</div>
+              <div class="value">{{endereco}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Bairro</div>
+              <div class="value">{{bairro}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Número</div>
+              <div class="value">{{numero}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Cidade</div>
+              <div class="value">{{cidadeCliente}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Estado (UF)</div>
+              <div class="value">{{uf}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Dados da Empresa</div>
+        <div class="grid">
+          <div class="row">
+            <div class="cell">
+              <div class="label">Garagem</div>
+              <div class="value">{{nomeFantasiaRecebedor}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Razão Social / Nome Empresarial</div>
+              <div class="value">{{razaoSocialRecebedor}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">CNPJ</div>
+              <div class="value">{{documentoRecebedor}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{#showVeiculo}}
+      <div class="section">
+        <div class="section-title">Dados do Veículo</div>
+        <div class="grid">
+          <div class="row">
+            <div class="cell">
+              <div class="label">Modelo</div>
+              <div class="value">{{veiculoNome}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Marca</div>
+              <div class="value">{{marca}}</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="cell">
+              <div class="label">Placa</div>
+              <div class="value">{{placa}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Ano de Fabricação</div>
+              <div class="value">{{anoFab}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">Ano de Modelo</div>
+              <div class="value">{{anoMod}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{/showVeiculo}}
+
+      <div class="section">
+        <div class="grid">
+          <div class="row">
+            <div class="cell" style="width:65%;">
+              <div class="label">FORMA DE PAGAMENTO</div>
+              <div class="value">{{formaPagamento}}</div>
+            </div>
+            <div class="cell">
+              <div class="label">VALOR</div>
+              <div class="value is-strong">{{valor}}</div>
+              <div class="small">({{valorExtenso}})</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{#showNonVendaText}}
+      <div class="center-note">
+        <p>Recebi(emos) de <strong>{{nome}}</strong> a importância de <strong>{{valor}}</strong> ({{valorExtenso}}), referente à "{{baixaParcelaComum}}" sobre a categoria "{{baixaParcelaComumCategoria}}".</p>
+        <p>Para maior clareza firmo(amos) o presente recibo para que produza os seus efeitos, dando plena, rasa e irrevogável quitação, pelo valor recebido.</p>
+      </div>
+      {{/showNonVendaText}}
+
+      <div class="section">
+        <div class="section-title">OBSERVAÇÕES</div>
+        <div class="observations">{{observacao}}</div>
+      </div>
+
+      <div class="signatures">
+        <div class="signature">
+          <div class="signature-line">{{nomeExibido}}</div>
+          <div class="signature-doc">{{documentoCliente}}</div>
+        </div>
+        <div class="signature">
+          <div class="signature-line">{{razaoSocialRecebedor}}</div>
+          <div class="signature-doc">{{documentoRecebedor}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {{/copies}}
+</body>
+</html>

@@ -443,10 +443,36 @@ export function createBrowserService(config) {
           return hasMeaningfulOwnContent(root) ? root : null;
         }
 
+        function resolveLayoutAnchor(element) {
+          if (!(element instanceof Element)) {
+            return null;
+          }
+
+          const explicitAnchor = element.closest("[data-pdf-content-anchor]");
+          if (explicitAnchor) {
+            return explicitAnchor;
+          }
+
+          return element.closest("td, th, tr, tfoot, tbody, table") || element;
+        }
+
+        function resolveClipPadding(anchor) {
+          const rawValue = anchor?.getAttribute?.("data-pdf-clip-padding");
+          const numericValue = Number(rawValue);
+
+          if (Number.isFinite(numericValue) && numericValue >= 0) {
+            return numericValue;
+          }
+
+          return 12;
+        }
+
         const lastMeaningfulElement = findLastMeaningfulElement(body);
-        const contentBottom = lastMeaningfulElement
-          ? lastMeaningfulElement.getBoundingClientRect().bottom + window.scrollY
+        const lastLayoutAnchor = resolveLayoutAnchor(lastMeaningfulElement);
+        const contentBottom = lastLayoutAnchor
+          ? lastLayoutAnchor.getBoundingClientRect().bottom + window.scrollY
           : 0;
+        const clipPadding = resolveClipPadding(lastLayoutAnchor);
 
         if (lastMeaningfulElement && contentBottom > 0) {
           let current = lastMeaningfulElement;
@@ -483,7 +509,7 @@ export function createBrowserService(config) {
           const trailingDocumentGap = documentBottom - contentBottom;
 
           if (trailingDocumentGap > 48) {
-            const clippedHeight = Math.max(0, Math.ceil(contentBottom - bodyTop + 12));
+            const clippedHeight = Math.max(0, Math.ceil(contentBottom - bodyTop + clipPadding));
 
             if (clippedHeight > 0) {
               for (const element of [root, body]) {
@@ -760,5 +786,15 @@ export function createBrowserService(config) {
     normalizePageBreaks,
     warmupBrowser,
     closeBrowser,
+    getStats() {
+      return {
+        browserLaunched: Boolean(browserPromise),
+        bufferedSessions: bufferedSessions.length,
+        bufferedSessionsTarget: getBufferedSessionsTarget(),
+        pendingWarmups: pendingBufferedSessionWarmups.size,
+        reuseSessionsEnabled: config.pdfReuseSessions,
+        reuseSessionMaxUses: config.pdfReuseSessionMaxUses,
+      };
+    },
   };
 }

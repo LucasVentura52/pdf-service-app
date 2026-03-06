@@ -75,5 +75,14 @@ export function createPdfQueue({
 
   return {
     acquirePdfJob,
+    getStats() {
+      return {
+        activeJobs,
+        pendingJobs: pendingJobs.length,
+        maxConcurrentJobs,
+        maxPendingJobs,
+        acquireTimeoutMs,
+      };
+    },
   };
 }

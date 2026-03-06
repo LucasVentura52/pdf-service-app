@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {{{headAssets}}}
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      color: #111;
+      background: #fff;
+      color-scheme: light;
+    }
+    .pdf-page-break,
+    [data-pdf-page-break="always"],
+    .page-break {
+      break-before: page;
+      page-break-before: always;
+    }
+    .pdf-root {
+      width: {{widthPx}}px;
+      margin: 0 auto;
+      padding: {{paddingPx}}px;
+    }
+    .pdf-contract-normalize .{{className}} {
+      zoom: 0.8;
+    }
+    {{{extraStyle}}}
+  </style>
+</head>
+<body class="{{bodyClass}}">
+  <div class="pdf-root">
+    <div class="{{className}}">
+      {{{bodyHtml}}}
+    </div>
+  </div>
+</body>
+</html>

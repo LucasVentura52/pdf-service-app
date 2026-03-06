@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page { size: A4 landscape; margin: 7mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: rgba(0, 0, 0, 0.87);
+      font-family: Roboto, Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.68);
+    }
+    .card {
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .meta {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+      padding: 12px 16px 8px;
+      color: rgba(0, 0, 0, 0.62);
+      font-size: 11px;
+    }
+    .meta-col { display: table-cell; vertical-align: top; width: 50%; }
+    .meta-col.is-right { text-align: right; }
+    .meta-line { margin: 0 0 3px; white-space: pre-wrap; }
+    .meta-line.is-strong { font-weight: 700; color: rgba(0, 0, 0, 0.74); }
+    .stats {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0;
+    }
+    .stats th, .stats td {
+      padding: 8px 10px;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+    .stats th {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.6);
+      font-weight: 700;
+      background: rgba(0, 0, 0, 0.02);
+    }
+    .stats td {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.78);
+      background: #fff;
+    }
+    table.report {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    table.report th {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      background: #fff;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.87);
+    }
+    table.report td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      background: #fff;
+      color: rgba(0, 0, 0, 0.72);
+      vertical-align: top;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    table.report tbody tr:nth-child(even) td {
+      background: rgba(0, 0, 0, 0.025);
+    }
+    .is-right { text-align: right; }
+    .is-center { text-align: center; }
+    .footer {
+      padding: 10px 16px;
+      text-align: right;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.65);
+    }
+    .empty {
+      text-align: center;
+      color: rgba(0, 0, 0, 0.6);
+      padding: 28px 16px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="title">{{title}}</h1>
+  <div class="card">
+    <div class="meta">
+      <div class="meta-col">
+        {{#metaLeftLines}}
+        <div class="meta-line {{className}}">{{value}}</div>
+        {{/metaLeftLines}}
+      </div>
+      <div class="meta-col is-right">
+        {{#metaRightLines}}
+        <div class="meta-line {{className}}">{{value}}</div>
+        {{/metaRightLines}}
+      </div>
+    </div>
+
+    {{#stats.length}}
+    <table class="stats">
+      <thead>
+        <tr>
+          {{#stats}}
+          <th>{{label}}</th>
+          {{/stats}}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          {{#stats}}
+          <td>{{value}}</td>
+          {{/stats}}
+        </tr>
+      </tbody>
+    </table>
+    {{/stats.length}}
+
+    <table class="report">
+      <colgroup>
+        {{#columns}}
+        <col style="width: {{widthPercent}}%" />
+        {{/columns}}
+      </colgroup>
+      <thead>
+        <tr>
+          {{#columns}}
+          <th class="{{className}}">{{label}}</th>
+          {{/columns}}
+        </tr>
+      </thead>
+      <tbody>
+        {{#rows}}
+        <tr>
+          {{#cells}}
+          <td class="{{className}}">{{value}}</td>
+          {{/cells}}
+        </tr>
+        {{/rows}}
+        {{^rows}}
+        <tr><td colspan="{{columnsCount}}" class="empty">{{emptyLabel}}</td></tr>
+        {{/rows}}
+      </tbody>
+    </table>
+
+    <div class="footer">{{totalItemsLabel}}</div>
+  </div>
+</body>
+</html>

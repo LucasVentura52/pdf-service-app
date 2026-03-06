@@ -1,6 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import Mustache from "mustache";
+import { resolveTemplatePayload } from "./templatePayloads.js";
+
+export { isPeopleReportPayload, resolveTemplatePayload, sanitizeTemplateData } from "./templatePayloads.js";
 
 export class TemplateNotFoundError extends Error {
   constructor(templateId) {
@@ -9,99 +12,6 @@ export class TemplateNotFoundError extends Error {
     this.code = "TEMPLATE_NOT_FOUND";
     this.templateId = templateId;
   }
-}
-
-const REPORT_COMPACT_ROWS_THRESHOLD = 800;
-const REPORT_ULTRA_COMPACT_ROWS_THRESHOLD = 1800;
-
-function hasVisibleReportValue(value) {
-  if (value === null || value === undefined) return false;
-  if (typeof value === "number" || typeof value === "boolean") return true;
-
-  if (typeof value === "string") {
-    return value.replace(/[\s\u00a0]+/g, "").length > 0;
-  }
-
-  if (Array.isArray(value)) {
-    return value.some((item) => hasVisibleReportValue(item));
-  }
-
-  if (typeof value === "object") {
-    if ("value" in value) {
-      return hasVisibleReportValue(value.value);
-    }
-
-    if ("text" in value) {
-      return hasVisibleReportValue(value.text);
-    }
-  }
-
-  return false;
-}
-
-function sanitizeReportSectionRows(section) {
-  if (!section || !Array.isArray(section.rows)) {
-    return section;
-  }
-
-  const rows = section.rows.filter((row) => {
-    if (!row || !Array.isArray(row.cells)) {
-      return true;
-    }
-
-    return row.cells.some((cell) => hasVisibleReportValue(cell));
-  });
-
-  return {
-    ...section,
-    rows,
-  };
-}
-
-function buildReportLayout(sections) {
-  const normalizedSections = Array.isArray(sections) ? sections : [];
-  let totalRows = 0;
-  let maxColumns = 0;
-
-  for (const section of normalizedSections) {
-    const rowCount = Array.isArray(section?.rows) ? section.rows.length : 0;
-    const columnCount = Array.isArray(section?.columns)
-      ? section.columns.length
-      : Math.max(0, Number(section?.columnsCount || 0));
-
-    totalRows += rowCount;
-    maxColumns = Math.max(maxColumns, columnCount);
-  }
-
-  const ultraCompact = totalRows >= REPORT_ULTRA_COMPACT_ROWS_THRESHOLD;
-  const compact = ultraCompact || totalRows >= REPORT_COMPACT_ROWS_THRESHOLD;
-
-  return {
-    compact,
-    ultraCompact,
-    totalRows,
-    maxColumns,
-  };
-}
-
-export function sanitizeTemplateData(templateId, data) {
-  if (String(templateId || "").trim() !== "report" || !data || typeof data !== "object") {
-    return data || {};
-  }
-
-  const sections = Array.isArray(data.sections)
-    ? data.sections.map((section) => sanitizeReportSectionRows(section))
-    : data.sections;
-  const layout = buildReportLayout(sections);
-
-  return {
-    ...data,
-    layout: {
-      ...(data.layout && typeof data.layout === "object" ? data.layout : {}),
-      ...layout,
-    },
-    sections,
-  };
 }
 
 export function createTemplateService({ templateDir }) {
@@ -138,11 +48,9 @@ export function createTemplateService({ templateDir }) {
   }
 
   async function resolveHtmlFromPayload(payload) {
-    if (payload.templateId) {
-      const template = await loadTemplate(payload.templateId);
-      return Mustache.render(template, sanitizeTemplateData(payload.templateId, payload.data));
-    }
-    return payload.html || "";
+    const resolved = resolveTemplatePayload(payload);
+    const template = await loadTemplate(resolved.templateId);
+    return Mustache.render(template, resolved.data);
   }
 
   async function warmupTemplateCache() {
@@ -161,8 +69,17 @@ export function createTemplateService({ templateDir }) {
     }
   }
 
+  function getStats() {
+    return {
+      templateDir: resolvedTemplateDir,
+      cachedTemplates: templateCache.size,
+    };
+  }
+
   return {
     resolveHtmlFromPayload,
     warmupTemplateCache,
+    getStats,
   };
 }
+

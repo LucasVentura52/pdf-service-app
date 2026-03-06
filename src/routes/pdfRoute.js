@@ -43,7 +43,14 @@ function logAssetOrigins(enabled, filename, assetSummary) {
   console.log(`[pdf-service] ${filename}: assets=${details}`);
 }
 
-export function createPdfRouter({ requireToken, pdfQueue, templateService, browserService, config }) {
+export function createPdfRouter({
+  requireToken,
+  pdfQueue,
+  templateService,
+  browserService,
+  nativeReportPdfService,
+  config,
+}) {
   const router = Router();
 
   router.post("/", requireToken, async (req, res) => {
@@ -60,48 +67,56 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
     const filename = sanitizeFilename(payload.filename || "documento-gerado") || "documento-gerado";
     const performanceTracker = createPerformanceTracker(config.pdfLogPerformance, filename);
     let releaseJob = null;
+    let pageSession = null;
 
     try {
       releaseJob = await pdfQueue.acquirePdfJob();
       performanceTracker.mark("queue");
-      let html = await templateService.resolveHtmlFromPayload(payload);
-      html = ensureFullHtmlDocument(html);
-      html = injectBaseHref(html, config.pdfPublicBaseUrl);
-      performanceTracker.mark("html");
-      const pageSession = await browserService.createPageWithRecovery();
-      const { page } = pageSession;
-      performanceTracker.mark("session");
 
-      try {
-        await browserService.setPageContentWithFallback(page, html, payload.options);
-        performanceTracker.mark("render");
-        await browserService.normalizePageBreaks(page);
-        performanceTracker.mark("normalize");
-
-        const pdfBuffer = await page.pdf({
-          format: payload.options?.format || "A4",
-          landscape: payload.options?.landscape || false,
-          printBackground: payload.options?.printBackground ?? true,
-          preferCSSPageSize: payload.options?.preferCSSPageSize ?? true,
-          displayHeaderFooter: payload.options?.displayHeaderFooter ?? false,
-          scale: payload.options?.scale,
-          margin: payload.options?.margin,
-        });
-        performanceTracker.mark("pdf");
+      if (nativeReportPdfService?.canRenderPayload?.(payload)) {
+        const pdfBuffer = await nativeReportPdfService.generateFromPayload(payload);
+        performanceTracker.mark("nativePdf");
 
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Length", String(pdfBuffer.length));
         res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
         res.send(pdfBuffer);
-        logAssetOrigins(
-          config.pdfLogAssetOrigins,
-          filename,
-          pageSession.getAssetRequestSummary?.() || []
-        );
-        performanceTracker.flush();
-      } finally {
-        await pageSession.close();
+        return;
       }
+
+      let html = await templateService.resolveHtmlFromPayload(payload);
+      html = ensureFullHtmlDocument(html);
+      html = injectBaseHref(html, config.pdfPublicBaseUrl);
+      performanceTracker.mark("html");
+      pageSession = await browserService.createPageWithRecovery();
+      const { page } = pageSession;
+      performanceTracker.mark("session");
+
+      await browserService.setPageContentWithFallback(page, html, payload.options);
+      performanceTracker.mark("render");
+      await browserService.normalizePageBreaks(page);
+      performanceTracker.mark("normalize");
+
+      const pdfBuffer = await page.pdf({
+        format: payload.options?.format || "A4",
+        landscape: payload.options?.landscape || false,
+        printBackground: payload.options?.printBackground ?? true,
+        preferCSSPageSize: payload.options?.preferCSSPageSize ?? true,
+        displayHeaderFooter: payload.options?.displayHeaderFooter ?? false,
+        scale: payload.options?.scale,
+        margin: payload.options?.margin,
+      });
+      performanceTracker.mark("pdf");
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Length", String(pdfBuffer.length));
+      res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
+      res.send(pdfBuffer);
+      logAssetOrigins(
+        config.pdfLogAssetOrigins,
+        filename,
+        pageSession.getAssetRequestSummary?.() || []
+      );
     } catch (error) {
       if (error instanceof QueueSaturatedError) {
         res.setHeader("Retry-After", "5");
@@ -160,6 +175,13 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
         message: "Erro ao gerar PDF.",
       });
     } finally {
+      if (pageSession) {
+        await pageSession.close();
+        performanceTracker.mark("close");
+      }
+
+      performanceTracker.flush();
+
       if (releaseJob) {
         releaseJob();
       }

@@ -44,25 +44,16 @@ const pdfOptionsSchema = z
 export const pdfRequestSchema = z
   .object({
     filename: z.string().trim().min(1).max(120).optional(),
-    templateId: z.string().trim().regex(/^[a-z0-9_-]+$/i).max(80).optional(),
-    html: z.string().trim().min(1).max(6_000_000).optional(),
+    templateId: z.string().trim().regex(/^[a-z0-9_-]+$/i).max(80),
+    html: z.never().optional(),
     data: z.record(z.any()).default({}),
     options: pdfOptionsSchema.optional(),
   })
   .superRefine((value, ctx) => {
-    if (!value.html && !value.templateId) {
+    if (!value.templateId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Informe 'html' ou 'templateId'.",
-        path: ["html"],
-      });
-      return;
-    }
-
-    if (value.html && value.templateId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Informe apenas um entre 'html' e 'templateId'.",
+        message: "Informe 'templateId'.",
         path: ["templateId"],
       });
     }
