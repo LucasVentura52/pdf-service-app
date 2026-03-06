@@ -47,25 +47,3 @@ export function injectBaseHref(html, baseUrl) {
     `<head$1><base href="${escapeHtmlAttr(normalizedBaseUrl)}">`
   );
 }
-
-export function extractHttpOriginsFromHtml(html) {
-  const origins = new Set();
-  const matches = String(html || "").matchAll(/https?:\/\/[^\s"'()<>]+/gi);
-
-  for (const match of matches) {
-    const url = String(match[0] || "").trim();
-    if (!url) continue;
-
-    try {
-      origins.add(new URL(url).origin.toLowerCase());
-    } catch {
-      // Ignora URLs malformadas dentro do HTML.
-    }
-  }
-
-  if (origins.has("https://fonts.googleapis.com")) {
-    origins.add("https://fonts.gstatic.com");
-  }
-
-  return origins;
-}

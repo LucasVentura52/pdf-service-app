@@ -4,15 +4,29 @@ import { TemplateNotFoundError } from "../services/templateService.js";
 import { QueueSaturatedError, QueueTimeoutError } from "../services/pdfQueue.js";
 import {
   ensureFullHtmlDocument,
-  extractHttpOriginsFromHtml,
   injectBaseHref,
   sanitizeFilename,
 } from "../utils/html.js";
 
-function logPerformanceMetric(enabled, filename, startedAt) {
-  if (!enabled) return;
-  const durationMs = Date.now() - startedAt;
-  console.log(`[pdf-service] ${filename}: ${durationMs}ms`);
+function createPerformanceTracker(enabled, filename) {
+  const startedAt = Date.now();
+  let checkpointAt = startedAt;
+  const steps = [];
+
+  return {
+    mark(step) {
+      if (!enabled) return;
+      const now = Date.now();
+      steps.push(`${step}=${now - checkpointAt}ms`);
+      checkpointAt = now;
+    },
+    flush() {
+      if (!enabled) return;
+      const totalMs = Date.now() - startedAt;
+      const details = steps.length ? ` | ${steps.join(" | ")}` : "";
+      console.log(`[pdf-service] ${filename}: total=${totalMs}ms${details}`);
+    },
+  };
 }
 
 export function createPdfRouter({ requireToken, pdfQueue, templateService, browserService, config }) {
@@ -30,24 +44,23 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
 
     const payload = parsed.data;
     const filename = sanitizeFilename(payload.filename || "documento-gerado") || "documento-gerado";
-    const startedAt = Date.now();
+    const performanceTracker = createPerformanceTracker(config.pdfLogPerformance, filename);
     let releaseJob = null;
 
     try {
       releaseJob = await pdfQueue.acquirePdfJob();
+      performanceTracker.mark("queue");
       let html = await templateService.resolveHtmlFromPayload(payload);
       html = ensureFullHtmlDocument(html);
       html = injectBaseHref(html, config.pdfPublicBaseUrl);
-      const htmlAssetOrigins = extractHttpOriginsFromHtml(html);
-
-      const pageSession = await browserService.createPageWithRecovery({
-        allowedAssetOrigins: htmlAssetOrigins,
-      });
+      performanceTracker.mark("html");
+      const pageSession = await browserService.createPageWithRecovery();
       const { page } = pageSession;
+      performanceTracker.mark("session");
 
       try {
         await browserService.setPageContentWithFallback(page, html, payload.options);
-        await page.emulateMedia({ media: "print" });
+        performanceTracker.mark("render");
 
         const pdfBuffer = await page.pdf({
           format: payload.options?.format || "A4",
@@ -58,18 +71,15 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
           scale: payload.options?.scale,
           margin: payload.options?.margin,
         });
+        performanceTracker.mark("pdf");
 
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Length", String(pdfBuffer.length));
         res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
         res.send(pdfBuffer);
-        logPerformanceMetric(config.pdfLogPerformance, filename, startedAt);
+        performanceTracker.flush();
       } finally {
-        try {
-          await page.close();
-        } finally {
-          await pageSession.close();
-        }
+        await pageSession.close();
       }
     } catch (error) {
       if (error instanceof QueueSaturatedError) {

@@ -30,6 +30,21 @@ export function normalizeWaitUntil(value, fallback = "domcontentloaded") {
   return fallback;
 }
 
+export function buildNormalizedAllowedAssetOrigins(allowedOrigins = [], publicBaseUrl = "") {
+  const normalizedOrigins = new Set(
+    allowedOrigins
+      .map((origin) => normalizeOrigin(origin))
+      .filter((origin) => Boolean(origin) && origin !== "*")
+  );
+
+  const publicBaseOrigin = normalizeOrigin(publicBaseUrl);
+  if (publicBaseOrigin && publicBaseOrigin !== "*") {
+    normalizedOrigins.add(publicBaseOrigin);
+  }
+
+  return normalizedOrigins;
+}
+
 function splitCsv(value) {
   return String(value || "")
     .split(",")
@@ -56,10 +71,6 @@ const corsOriginSeeds = pdfAllowLocalDevOrigins
   : configuredCorsOrigins;
 const pdfAllowedAssetOrigins = splitCsv(process.env.PDF_ALLOWED_ASSET_ORIGINS);
 const pdfBlockPrivateNetwork = String(process.env.PDF_BLOCK_PRIVATE_NETWORK || "1").trim() !== "0";
-const normalizedConfiguredAssetOrigins = pdfAllowedAssetOrigins
-  .map((origin) => normalizeOrigin(origin))
-  .filter((origin) => Boolean(origin) && origin !== "*");
-const assetOriginSeeds = normalizedConfiguredAssetOrigins;
 
 export const config = {
   port: Number(process.env.PORT || 3100),
@@ -72,6 +83,7 @@ export const config = {
   pdfChromiumExecutablePath: String(process.env.PDF_CHROMIUM_EXECUTABLE_PATH || "").trim(),
   pdfMaxConcurrentJobs: Math.max(1, Number(process.env.PDF_MAX_CONCURRENT_JOBS || 2)),
   pdfMaxPendingJobs: Math.max(0, Number(process.env.PDF_MAX_PENDING_JOBS || 50)),
+  pdfPrewarmedSessions: Math.max(0, Number(process.env.PDF_PREWARMED_SESSIONS || 0)),
   pdfQueueWaitTimeoutMs: Math.max(0, Number(process.env.PDF_QUEUE_WAIT_TIMEOUT_MS || 15000)),
   pdfLogPerformance: String(process.env.PDF_LOG_PERFORMANCE || "").trim() === "1",
   pdfDefaultWaitUntil: normalizeWaitUntil(process.env.PDF_DEFAULT_WAIT_UNTIL, "domcontentloaded"),
@@ -81,8 +93,9 @@ export const config = {
   normalizedAllowedOrigins: new Set(
     corsOriginSeeds.map((origin) => normalizeOrigin(origin)).filter(Boolean)
   ),
-  normalizedAllowedAssetOrigins: new Set(
-    assetOriginSeeds
+  normalizedAllowedAssetOrigins: buildNormalizedAllowedAssetOrigins(
+    pdfAllowedAssetOrigins,
+    pdfPublicBaseUrl
   ),
   pdfBlockPrivateNetwork,
 };

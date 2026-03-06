@@ -1,27 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractHttpOriginsFromHtml } from "../src/utils/html.js";
+import { injectBaseHref } from "../src/utils/html.js";
 
-test("extrai origens http/https do html e inclui fonts.gstatic como derivada", () => {
-  const html = `
-    <html>
-      <head>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap">
-      </head>
-      <body>
-        <img src="https://api.maisgerencia.com.br/storage/image/veiculo/teste.jpg">
-      </body>
-    </html>
-  `;
+test("injeta base href quando html possui head e baseUrl configurada", () => {
+  const html = "<html><head><title>Teste</title></head><body>ok</body></html>";
+  const result = injectBaseHref(html, "https://sys.maisgerencia.com.br/app");
 
-  const origins = extractHttpOriginsFromHtml(html);
+  assert.match(result, /<base href="https:\/\/sys\.maisgerencia\.com\.br\/app\/">/);
+});
 
-  assert.deepEqual(
-    Array.from(origins).sort(),
-    [
-      "https://api.maisgerencia.com.br",
-      "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com",
-    ]
-  );
+test("nao sobrescreve base href ja existente", () => {
+  const html =
+    '<html><head><base href="https://existente.example/"><title>Teste</title></head><body>ok</body></html>';
+  const result = injectBaseHref(html, "https://sys.maisgerencia.com.br");
+
+  assert.equal(result, html);
 });

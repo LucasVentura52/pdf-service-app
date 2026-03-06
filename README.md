@@ -45,15 +45,16 @@ cp .env.example .env
 | `PDF_ALLOWED_ORIGINS` | recomendada | Lista de origens CORS separadas por vírgula (`*` não é aceito) | usa `PDF_PUBLIC_BASE_URL` quando vazio; origens locais podem ser liberadas pelo flag abaixo |
 | `PDF_ALLOW_LOCALHOST_ORIGINS` | não | Quando `1`, libera origens locais comuns (`localhost`/`127.0.0.1`) para desenvolvimento | `1` |
 | `PDF_PUBLIC_BASE_URL` | não | Base para resolver assets relativos via `<base href=...>` | vazio |
-| `PDF_ALLOWED_ASSET_ORIGINS` | opcional | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização | se vazio, permite assets publicos e segue bloqueando rede privada |
+| `PDF_ALLOWED_ASSET_ORIGINS` | opcional | Lista de origens HTTP/HTTPS permitidas para assets externos (imagens/fontes/css) durante a renderização; a origem de `PDF_PUBLIC_BASE_URL` entra automaticamente para suportar assets relativos | se vazio, permite assets publicos e segue bloqueando rede privada |
 | `PDF_BLOCK_PRIVATE_NETWORK` | não | Quando `1`, bloqueia tentativas de acessar hosts privados/localhost durante a renderização | `1` |
 | `PDF_TRUST_PROXY` | recomendada em produção | Configuração de `trust proxy` do Express para rate limit/IP real (ex.: `1` na Render) | `false` |
 | `PDF_RATE_LIMIT_MAX` | não | Limite de requests por minuto em `POST /pdf` | `40` |
 | `PDF_BODY_LIMIT` | não | Limite do body JSON | `8mb` |
 | `PDF_MAX_CONCURRENT_JOBS` | não | Quantidade máxima de PDFs gerados ao mesmo tempo no processo | `2` |
 | `PDF_MAX_PENDING_JOBS` | não | Tamanho máximo da fila de espera quando todos os workers estão ocupados | `50` |
+| `PDF_PREWARMED_SESSIONS` | não | Quantidade de sessões isoladas já prontas para reduzir latência de criação de contexto; manter `0` preserva o comportamento atual e consome menos memória | `0` |
 | `PDF_QUEUE_WAIT_TIMEOUT_MS` | não | Tempo máximo que uma requisição pode aguardar na fila antes de falhar | `15000` |
-| `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra tempo total de cada geração no log | `0` |
+| `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra breakdown de tempo por etapa (`queue`, `html`, `session`, `render`, `pdf`) | `0` |
 | `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de render (`load`, `domcontentloaded`, `networkidle`) quando o payload não define `options.waitUntil` | `domcontentloaded` |
 | `PDF_NETWORKIDLE_BUDGET_MS` | não | Tempo máximo para a tentativa inicial com `networkidle` antes de fallback para `domcontentloaded` | `1200` |
 | `PDF_ASSET_WAIT_TIMEOUT_MS` | não | Janela curta para aguardar fontes/imagens após `domcontentloaded` | `600` |
@@ -75,6 +76,7 @@ PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
 PDF_MAX_CONCURRENT_JOBS=2
 PDF_MAX_PENDING_JOBS=50
+PDF_PREWARMED_SESSIONS=0
 PDF_QUEUE_WAIT_TIMEOUT_MS=15000
 PDF_LOG_PERFORMANCE=0
 PDF_DEFAULT_WAIT_UNTIL=domcontentloaded
@@ -174,7 +176,7 @@ Regras importantes:
 - `html`: maximo de 6.000.000 caracteres
 - `options.scale`: entre `0.1` e `2`
 - `options.timeoutMs`: entre `1000` e `60000`
-- com `PDF_ALLOWED_ASSET_ORIGINS` preenchido, assets HTTP/HTTPS externos so carregam se a origem estiver nessa allowlist
+- com `PDF_ALLOWED_ASSET_ORIGINS` preenchido, assets HTTP/HTTPS externos so carregam se a origem estiver nessa allowlist; a origem de `PDF_PUBLIC_BASE_URL` e liberada automaticamente
 - com `PDF_ALLOWED_ASSET_ORIGINS` vazio, assets publicos sao permitidos automaticamente; rede privada/localhost continuam bloqueados
 
 #### Exemplo A: HTML direto

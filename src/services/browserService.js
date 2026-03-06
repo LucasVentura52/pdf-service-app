@@ -51,7 +51,7 @@ function isPrivateHostname(hostname) {
   return isPrivateIpv4(normalized) || isPrivateIpv6(normalized);
 }
 
-function isRequestUrlAllowed(url, allowedAssetOrigins, blockPrivateNetwork) {
+export function isRequestUrlAllowed(url, allowedAssetOrigins, blockPrivateNetwork) {
   let parsed;
   try {
     parsed = new URL(url);
@@ -85,6 +85,9 @@ function isRequestUrlAllowed(url, allowedAssetOrigins, blockPrivateNetwork) {
 
 export function createBrowserService(config) {
   let browserPromise = null;
+  let isClosing = false;
+  const bufferedSessions = [];
+  const pendingBufferedSessionWarmups = new Set();
 
   async function getBrowser() {
     if (!browserPromise) {
@@ -109,7 +112,9 @@ export function createBrowserService(config) {
 
   async function createContextWithNetworkGuard(extraAllowedAssetOrigins) {
     const browser = await getBrowser();
-    const context = await browser.newContext();
+    const context = await browser.newContext({
+      serviceWorkers: "block",
+    });
     const resolvedAllowedAssetOrigins = mergeAllowedAssetOrigins(extraAllowedAssetOrigins);
     await context.route("**/*", async (route) => {
       const requestUrl = route.request().url();
@@ -257,25 +262,111 @@ export function createBrowserService(config) {
     }
   }
 
+  function getBufferedSessionsTarget() {
+    return Math.min(config.pdfPrewarmedSessions || 0, config.pdfMaxConcurrentJobs || 1);
+  }
+
+  function shouldUseBufferedSession(options = {}) {
+    const allowedAssetOrigins = options.allowedAssetOrigins;
+    if (!allowedAssetOrigins) {
+      return true;
+    }
+
+    for (const _origin of allowedAssetOrigins) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function scheduleBufferedSessionWarmups() {
+    const target = getBufferedSessionsTarget();
+    if (isClosing || target <= 0) {
+      return;
+    }
+
+    while (bufferedSessions.length + pendingBufferedSessionWarmups.size < target) {
+      const warmupPromise = createIsolatedPageSession()
+        .then(async (session) => {
+          if (isClosing) {
+            await session.close();
+            return;
+          }
+          bufferedSessions.push(session);
+        })
+        .catch((error) => {
+          console.warn("[pdf-service] Nao foi possivel preaquecer sessao isolada do browser.", error);
+        })
+        .finally(() => {
+          pendingBufferedSessionWarmups.delete(warmupPromise);
+        });
+
+      pendingBufferedSessionWarmups.add(warmupPromise);
+    }
+  }
+
+  async function takeBufferedSession() {
+    while (bufferedSessions.length) {
+      const session = bufferedSessions.shift();
+      if (!session) {
+        break;
+      }
+
+      if (session.page.isClosed()) {
+        await session.close();
+        continue;
+      }
+
+      scheduleBufferedSessionWarmups();
+      return session;
+    }
+
+    scheduleBufferedSessionWarmups();
+    return null;
+  }
+
+  async function drainBufferedSessions() {
+    const sessionsToClose = bufferedSessions.splice(0, bufferedSessions.length);
+    await Promise.allSettled(
+      sessionsToClose.map((session) => session.close())
+    );
+    await Promise.allSettled(Array.from(pendingBufferedSessionWarmups));
+  }
+
   async function closeBrowser() {
-    if (!browserPromise) return;
+    isClosing = true;
     try {
+      await drainBufferedSessions();
+
+      if (!browserPromise) return;
       const browser = await browserPromise;
       await browser.close();
     } catch (error) {
       console.error("Erro ao fechar browser do PDF service:", error);
     } finally {
       browserPromise = null;
+      isClosing = false;
     }
   }
 
   async function createPageWithRecovery(options = {}) {
+    if (shouldUseBufferedSession(options)) {
+      const bufferedSession = await takeBufferedSession();
+      if (bufferedSession) {
+        return bufferedSession;
+      }
+    }
+
     try {
-      return await createIsolatedPageSession(options);
+      const session = await createIsolatedPageSession(options);
+      scheduleBufferedSessionWarmups();
+      return session;
     } catch {
       console.warn("[pdf-service] Falha ao criar page no contexto atual. Reiniciando browser/contexto.");
       await closeBrowser();
-      return createIsolatedPageSession(options);
+      const session = await createIsolatedPageSession(options);
+      scheduleBufferedSessionWarmups();
+      return session;
     }
   }
 
@@ -305,16 +396,27 @@ export function createBrowserService(config) {
 
   async function warmupBrowser() {
     try {
+      await getBrowser();
+
+      if (getBufferedSessionsTarget() > 0) {
+        scheduleBufferedSessionWarmups();
+        await Promise.allSettled(Array.from(pendingBufferedSessionWarmups));
+        console.log(
+          `[pdf-service] browser/contexto aquecidos com ${bufferedSessions.length} sessao(oes) pre-aquecida(s).`
+        );
+        return;
+      }
+
       const session = await createIsolatedPageSession();
       try {
         await session.page.setContent("<html><body></body></html>", {
           waitUntil: "domcontentloaded",
           timeout: 5000,
         });
-        await session.page.close();
       } finally {
         await session.close();
       }
+
       console.log("[pdf-service] browser/contexto aquecidos.");
     } catch (error) {
       console.warn("[pdf-service] warmup do browser falhou.", error);
