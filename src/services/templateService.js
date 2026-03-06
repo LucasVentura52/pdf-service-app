@@ -11,6 +11,9 @@ export class TemplateNotFoundError extends Error {
   }
 }
 
+const REPORT_COMPACT_ROWS_THRESHOLD = 800;
+const REPORT_ULTRA_COMPACT_ROWS_THRESHOLD = 1800;
+
 function hasVisibleReportValue(value) {
   if (value === null || value === undefined) return false;
   if (typeof value === "number" || typeof value === "boolean") return true;
@@ -55,6 +58,32 @@ function sanitizeReportSectionRows(section) {
   };
 }
 
+function buildReportLayout(sections) {
+  const normalizedSections = Array.isArray(sections) ? sections : [];
+  let totalRows = 0;
+  let maxColumns = 0;
+
+  for (const section of normalizedSections) {
+    const rowCount = Array.isArray(section?.rows) ? section.rows.length : 0;
+    const columnCount = Array.isArray(section?.columns)
+      ? section.columns.length
+      : Math.max(0, Number(section?.columnsCount || 0));
+
+    totalRows += rowCount;
+    maxColumns = Math.max(maxColumns, columnCount);
+  }
+
+  const ultraCompact = totalRows >= REPORT_ULTRA_COMPACT_ROWS_THRESHOLD;
+  const compact = ultraCompact || totalRows >= REPORT_COMPACT_ROWS_THRESHOLD;
+
+  return {
+    compact,
+    ultraCompact,
+    totalRows,
+    maxColumns,
+  };
+}
+
 export function sanitizeTemplateData(templateId, data) {
   if (String(templateId || "").trim() !== "report" || !data || typeof data !== "object") {
     return data || {};
@@ -63,9 +92,14 @@ export function sanitizeTemplateData(templateId, data) {
   const sections = Array.isArray(data.sections)
     ? data.sections.map((section) => sanitizeReportSectionRows(section))
     : data.sections;
+  const layout = buildReportLayout(sections);
 
   return {
     ...data,
+    layout: {
+      ...(data.layout && typeof data.layout === "object" ? data.layout : {}),
+      ...layout,
+    },
     sections,
   };
 }
