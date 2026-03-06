@@ -90,7 +90,11 @@ export function resolveReusableSessionTarget({
 }) {
   const normalizedMaxConcurrentJobs = Math.max(1, Number(maxConcurrentJobs || 1));
   const normalizedPrewarmedSessions = Math.max(0, Number(prewarmedSessions || 0));
-  const baselineTarget = reuseSessions ? 1 : 0;
+  const baselineTarget = reuseSessions
+    ? normalizedPrewarmedSessions > 0
+      ? normalizedMaxConcurrentJobs
+      : 1
+    : 0;
 
   return Math.min(
     normalizedMaxConcurrentJobs,
@@ -138,6 +142,26 @@ export function summarizeAssetRequests(assetRequests) {
       types: Array.from(entry.types).sort(),
     }))
     .sort((left, right) => left.origin.localeCompare(right.origin));
+}
+
+export function buildChromiumLaunchOptions(config) {
+  const launchOptions = {
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    // The API does not expose tagged PDFs, and this default Chromium arg adds measurable
+    // overhead to page.pdf() for large documents.
+    ignoreDefaultArgs: ["--export-tagged-pdf"],
+  };
+
+  if (config.pdfChromiumExecutablePath) {
+    launchOptions.executablePath = config.pdfChromiumExecutablePath;
+  }
+
+  if (config.pdfChromiumChannel) {
+    launchOptions.channel = config.pdfChromiumChannel;
+  }
+
+  return launchOptions;
 }
 
 export function createBrowserService(config) {
@@ -205,18 +229,7 @@ export function createBrowserService(config) {
   }
 
   async function launchBrowser() {
-    const launchOptions = {
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    };
-
-    if (config.pdfChromiumExecutablePath) {
-      launchOptions.executablePath = config.pdfChromiumExecutablePath;
-    }
-
-    if (config.pdfChromiumChannel) {
-      launchOptions.channel = config.pdfChromiumChannel;
-    }
+    const launchOptions = buildChromiumLaunchOptions(config);
 
     try {
       return await chromium.launch(launchOptions);
@@ -330,6 +343,11 @@ export function createBrowserService(config) {
     try {
       await page.evaluate(() => {
         const BREAK_SELECTOR = ".page-break, [data-pdf-page-break='always']";
+        const IGNORE_SELECTOR =
+          "script, style, link, meta, noscript, template, source, track, br";
+        const INTRINSIC_CONTENT_SELECTOR =
+          "img, svg, canvas, video, iframe, object, embed, hr, table, thead, tbody, tfoot, tr, td, th, input, textarea, select";
+        const WHITESPACE_RE = /[\s\u00a0]+/g;
         const body = document.body;
         if (!body) return;
 
@@ -350,78 +368,13 @@ export function createBrowserService(config) {
           lastElement.style.pageBreakAfter = "auto";
         }
 
-        function isMeaningfulElement(element, style) {
-          if (
-            style.display === "none" ||
-            style.visibility === "hidden" ||
-            Number(style.opacity || "1") === 0
-          ) {
-            return false;
-          }
+        function hasDirectTextContent(element) {
+          for (const node of Array.from(element.childNodes || [])) {
+            if (node.nodeType !== Node.TEXT_NODE) {
+              continue;
+            }
 
-          if (
-            element.matches(
-              "script, style, link, meta, noscript, template, source, track, br"
-            )
-          ) {
-            return false;
-          }
-
-          if (element.getAttribute("aria-hidden") === "true" && !element.querySelector("img, svg, canvas")) {
-            return false;
-          }
-
-          if (
-            element.matches(
-              "img, svg, canvas, video, iframe, object, embed, hr, table, thead, tbody, tfoot, tr, td, th"
-            )
-          ) {
-            return true;
-          }
-
-          const text = (element.innerText || "").replace(/\s+/g, " ").trim();
-          if (text) {
-            return true;
-          }
-
-          return false;
-        }
-
-        const meaningfulElements = new WeakSet();
-        let contentBottom = 0;
-        let lastMeaningfulElement = null;
-        for (const element of Array.from(body.querySelectorAll("*"))) {
-          const rect = element.getBoundingClientRect();
-          if (!rect.width && !rect.height) {
-            continue;
-          }
-
-          const style = window.getComputedStyle(element);
-          if (!isMeaningfulElement(element, style)) {
-            continue;
-          }
-
-          meaningfulElements.add(element);
-          lastMeaningfulElement = element;
-
-          const shouldCountAsContentEdge =
-            element.children.length === 0 ||
-            element.matches(
-              "img, svg, canvas, video, iframe, object, embed, hr, table, thead, tbody, tfoot, tr, td, th"
-            );
-
-          if (shouldCountAsContentEdge) {
-            contentBottom = Math.max(contentBottom, rect.bottom + window.scrollY);
-          }
-        }
-
-        function subtreeHasMeaningfulContent(element) {
-          if (meaningfulElements.has(element)) {
-            return true;
-          }
-
-          for (const child of Array.from(element.children || [])) {
-            if (subtreeHasMeaningfulContent(child)) {
+            if (String(node.textContent || "").replace(WHITESPACE_RE, "").length > 0) {
               return true;
             }
           }
@@ -429,20 +382,71 @@ export function createBrowserService(config) {
           return false;
         }
 
-        if (lastMeaningfulElement) {
-          let current = lastMeaningfulElement;
-          while (current && current !== body) {
-            let sibling = current.nextElementSibling;
-            while (sibling) {
-              const nextSibling = sibling.nextElementSibling;
-              if (!subtreeHasMeaningfulContent(sibling)) {
-                sibling.remove();
-              }
-              sibling = nextSibling;
-            }
-            current = current.parentElement;
+        function shouldIgnoreElement(element, style) {
+          if (
+            style.display === "none" ||
+            style.visibility === "hidden" ||
+            Number(style.opacity || "1") === 0
+          ) {
+            return true;
           }
+
+          if (element.matches(IGNORE_SELECTOR)) {
+            return true;
+          }
+
+          if (
+            element.getAttribute("aria-hidden") === "true" &&
+            !element.querySelector("img, svg, canvas")
+          ) {
+            return true;
+          }
+
+          return false;
         }
+
+        function hasMeaningfulOwnContent(element) {
+          if (element.matches(INTRINSIC_CONTENT_SELECTOR)) {
+            return true;
+          }
+
+          const rect = element.getBoundingClientRect();
+          if (!rect.width && !rect.height) {
+            return false;
+          }
+
+          return hasDirectTextContent(element);
+        }
+
+        function findLastMeaningfulElement(root) {
+          if (!(root instanceof Element)) {
+            return null;
+          }
+
+          const style = window.getComputedStyle(root);
+          if (shouldIgnoreElement(root, style)) {
+            return null;
+          }
+
+          let child = root.lastElementChild;
+          while (child) {
+            const lastMeaningfulDescendant = findLastMeaningfulElement(child);
+            if (lastMeaningfulDescendant) {
+              return lastMeaningfulDescendant;
+            }
+
+            const previousSibling = child.previousElementSibling;
+            child.remove();
+            child = previousSibling;
+          }
+
+          return hasMeaningfulOwnContent(root) ? root : null;
+        }
+
+        const lastMeaningfulElement = findLastMeaningfulElement(body);
+        const contentBottom = lastMeaningfulElement
+          ? lastMeaningfulElement.getBoundingClientRect().bottom + window.scrollY
+          : 0;
 
         if (lastMeaningfulElement && contentBottom > 0) {
           let current = lastMeaningfulElement;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildChromiumLaunchOptions,
   isRequestUrlAllowed,
   recordAssetRequest,
   resolveReusableSessionTarget,
@@ -49,6 +50,16 @@ test("define target reutilizavel minimo quando reuse esta ativo", () => {
   assert.equal(target, 1);
 });
 
+test("alinha pool reutilizavel com concorrencia quando prewarm e reuse estao ativos", () => {
+  const target = resolveReusableSessionTarget({
+    maxConcurrentJobs: 4,
+    prewarmedSessions: 1,
+    reuseSessions: true,
+  });
+
+  assert.equal(target, 4);
+});
+
 test("limita target reutilizavel ao maximo de concorrencia", () => {
   const target = resolveReusableSessionTarget({
     maxConcurrentJobs: 2,
@@ -81,4 +92,28 @@ test("resume requests de assets por origem e tipo", () => {
       types: ["image", "stylesheet"],
     },
   ]);
+});
+
+test("remove export-tagged-pdf dos default args do chromium", () => {
+  const launchOptions = buildChromiumLaunchOptions({
+    pdfChromiumChannel: "",
+    pdfChromiumExecutablePath: "",
+  });
+
+  assert.deepEqual(launchOptions.ignoreDefaultArgs, ["--export-tagged-pdf"]);
+  assert.deepEqual(launchOptions.args, [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+  ]);
+});
+
+test("preserva channel e executablePath no launch do chromium", () => {
+  const launchOptions = buildChromiumLaunchOptions({
+    pdfChromiumChannel: "chrome",
+    pdfChromiumExecutablePath: "/custom/chromium",
+  });
+
+  assert.equal(launchOptions.channel, "chrome");
+  assert.equal(launchOptions.executablePath, "/custom/chromium");
 });

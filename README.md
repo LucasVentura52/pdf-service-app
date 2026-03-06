@@ -52,11 +52,11 @@ cp .env.example .env
 | `PDF_BODY_LIMIT` | não | Limite do body JSON | `8mb` |
 | `PDF_MAX_CONCURRENT_JOBS` | não | Quantidade máxima de PDFs gerados ao mesmo tempo no processo | `2` |
 | `PDF_MAX_PENDING_JOBS` | não | Tamanho máximo da fila de espera quando todos os workers estão ocupados | `50` |
-| `PDF_PREWARMED_SESSIONS` | não | Quantidade de sessões isoladas já prontas para reduzir latência de criação de contexto; manter `0` preserva o comportamento atual e consome menos memória | `0` |
-| `PDF_REUSE_SESSIONS` | não | Quando `1`, reutiliza sessões pré-aquecidas com limpeza defensiva entre requests para reduzir ainda mais a latência | `0` |
+| `PDF_PREWARMED_SESSIONS` | não | Quantidade base de sessões isoladas já prontas para reduzir latência de criação de contexto; com `PDF_REUSE_SESSIONS=1` e valor maior que `0`, o pool passa a acompanhar `PDF_MAX_CONCURRENT_JOBS` | `0` |
+| `PDF_REUSE_SESSIONS` | não | Quando `1`, reutiliza sessões pré-aquecidas com limpeza defensiva entre requests; se `PDF_PREWARMED_SESSIONS` for maior que `0`, o pool é alinhado automaticamente com a concorrência configurada | `0` |
 | `PDF_REUSE_SESSION_MAX_USES` | não | Quantidade máxima de usos de uma mesma sessão reutilizável antes de reciclar o contexto | `25` |
 | `PDF_QUEUE_WAIT_TIMEOUT_MS` | não | Tempo máximo que uma requisição pode aguardar na fila antes de falhar | `15000` |
-| `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra breakdown de tempo por etapa (`queue`, `html`, `session`, `render`, `pdf`) | `0` |
+| `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra breakdown de tempo por etapa (`queue`, `html`, `session`, `render`, `normalize`, `pdf`) | `0` |
 | `PDF_LOG_ASSET_ORIGINS` | não | Quando `1`, registra as origens HTTP/HTTPS realmente requisitadas durante a renderização para ajudar a localizar assets remotos | `0` |
 | `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de render (`load`, `domcontentloaded`, `networkidle`) quando o payload não define `options.waitUntil` | `domcontentloaded` |
 | `PDF_NETWORKIDLE_BUDGET_MS` | não | Tempo máximo para a tentativa inicial com `networkidle` antes de fallback para `domcontentloaded` | `1200` |

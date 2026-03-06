@@ -76,6 +76,7 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
         await browserService.setPageContentWithFallback(page, html, payload.options);
         performanceTracker.mark("render");
         await browserService.normalizePageBreaks(page);
+        performanceTracker.mark("normalize");
 
         const pdfBuffer = await page.pdf({
           format: payload.options?.format || "A4",
