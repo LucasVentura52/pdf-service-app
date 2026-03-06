@@ -321,15 +321,32 @@ export function createBrowserService(config) {
         const waitImages = async () => {
           const images = Array.from(document.images || []);
           if (!images.length) return;
+
+          const waitForImageDecode = (img) => {
+            const decodePromise =
+              typeof img.decode === "function"
+                ? img.decode().catch(() => null)
+                : Promise.resolve();
+
+            if (img.complete) {
+              return decodePromise;
+            }
+
+            return new Promise((resolve) => {
+              const finalize = () => {
+                decodePromise.finally(() => resolve());
+              };
+
+              img.addEventListener("load", finalize, { once: true });
+              img.addEventListener("error", () => resolve(), { once: true });
+            });
+          };
+
           await Promise.all(
-            images.map((img) => {
-              if (img.complete) return Promise.resolve();
-              return new Promise((resolve) => {
-                img.addEventListener("load", () => resolve(), { once: true });
-                img.addEventListener("error", () => resolve(), { once: true });
-              });
-            })
+            images.map((img) => waitForImageDecode(img))
           );
+
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         };
 
         await stopAfter(Promise.all([waitFonts(), waitImages()]));

@@ -390,13 +390,13 @@
     <section class="hero">
       <div class="hero-main">
         <div class="hero-media">
-          {{#vehicle.imagem}}<img src="{{vehicle.imagem}}" alt="Veículo" />{{/vehicle.imagem}}
+          {{#vehicle.imagem}}<img src="{{vehicle.imagem}}" alt="Veículo" loading="eager" decoding="sync" fetchpriority="high" />{{/vehicle.imagem}}
           {{^vehicle.imagem}}
-          {{#vehicle.foto}}<img src="{{vehicle.foto}}" alt="Veículo" />{{/vehicle.foto}}
+          {{#vehicle.foto}}<img src="{{vehicle.foto}}" alt="Veículo" loading="eager" decoding="sync" fetchpriority="high" />{{/vehicle.foto}}
           {{^vehicle.foto}}
-          {{#vehicle.imagemPrincipal}}<img src="{{vehicle.imagemPrincipal}}" alt="Veículo" />{{/vehicle.imagemPrincipal}}
+          {{#vehicle.imagemPrincipal}}<img src="{{vehicle.imagemPrincipal}}" alt="Veículo" loading="eager" decoding="sync" fetchpriority="high" />{{/vehicle.imagemPrincipal}}
           {{^vehicle.imagemPrincipal}}
-          {{#vehicle.fotoPrincipal}}<img src="{{vehicle.fotoPrincipal}}" alt="Veículo" />{{/vehicle.fotoPrincipal}}
+          {{#vehicle.fotoPrincipal}}<img src="{{vehicle.fotoPrincipal}}" alt="Veículo" loading="eager" decoding="sync" fetchpriority="high" />{{/vehicle.fotoPrincipal}}
           {{^vehicle.fotoPrincipal}}
           <div class="hero-media-fallback">Imagem do veículo indisponível</div>
           {{/vehicle.fotoPrincipal}}
@@ -482,12 +482,12 @@
       </div>
 
       {{#company.logo}}
-      <img class="logo" src="{{company.logo}}" alt="Logo" />
+      <img class="logo" src="{{company.logo}}" alt="Logo" loading="eager" decoding="sync" />
       {{/company.logo}}
       {{^company.logo}}
-      {{#garage.foto}}<img class="logo" src="{{garage.foto}}" alt="Foto da garagem" />{{/garage.foto}}
+      {{#garage.foto}}<img class="logo" src="{{garage.foto}}" alt="Foto da garagem" loading="eager" decoding="sync" />{{/garage.foto}}
       {{^garage.foto}}
-      {{#garage.imagem}}<img class="logo" src="{{garage.imagem}}" alt="Foto da garagem" />{{/garage.imagem}}
+      {{#garage.imagem}}<img class="logo" src="{{garage.imagem}}" alt="Foto da garagem" loading="eager" decoding="sync" />{{/garage.imagem}}
       {{/garage.foto}}
       {{/company.logo}}
     </footer>
@@ -505,13 +505,31 @@
       function whenImagesReady() {
         var images = Array.prototype.slice.call(document.images || []);
         if (!images.length) return Promise.resolve();
-        return Promise.all(images.map(function (img) {
-          if (img.complete) return Promise.resolve();
+
+        function waitForImageDecode(img) {
+          var decodePromise = typeof img.decode === "function"
+            ? img.decode().catch(function () { return null; })
+            : Promise.resolve();
+
+          if (img.complete) {
+            return decodePromise;
+          }
+
           return new Promise(function (resolve) {
-            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("load", function () {
+              decodePromise.then(function () { resolve(); });
+            }, { once: true });
             img.addEventListener("error", resolve, { once: true });
           });
-        }));
+        }
+
+        return Promise.all(images.map(waitForImageDecode)).then(function () {
+          return new Promise(function (resolve) {
+            requestAnimationFrame(function () {
+              requestAnimationFrame(resolve);
+            });
+          });
+        });
       }
 
       function run() {
