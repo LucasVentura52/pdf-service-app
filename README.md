@@ -53,8 +53,11 @@ cp .env.example .env
 | `PDF_MAX_CONCURRENT_JOBS` | não | Quantidade máxima de PDFs gerados ao mesmo tempo no processo | `2` |
 | `PDF_MAX_PENDING_JOBS` | não | Tamanho máximo da fila de espera quando todos os workers estão ocupados | `50` |
 | `PDF_PREWARMED_SESSIONS` | não | Quantidade de sessões isoladas já prontas para reduzir latência de criação de contexto; manter `0` preserva o comportamento atual e consome menos memória | `0` |
+| `PDF_REUSE_SESSIONS` | não | Quando `1`, reutiliza sessões pré-aquecidas com limpeza defensiva entre requests para reduzir ainda mais a latência | `0` |
+| `PDF_REUSE_SESSION_MAX_USES` | não | Quantidade máxima de usos de uma mesma sessão reutilizável antes de reciclar o contexto | `25` |
 | `PDF_QUEUE_WAIT_TIMEOUT_MS` | não | Tempo máximo que uma requisição pode aguardar na fila antes de falhar | `15000` |
 | `PDF_LOG_PERFORMANCE` | não | Quando `1`, registra breakdown de tempo por etapa (`queue`, `html`, `session`, `render`, `pdf`) | `0` |
+| `PDF_LOG_ASSET_ORIGINS` | não | Quando `1`, registra as origens HTTP/HTTPS realmente requisitadas durante a renderização para ajudar a localizar assets remotos | `0` |
 | `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de render (`load`, `domcontentloaded`, `networkidle`) quando o payload não define `options.waitUntil` | `domcontentloaded` |
 | `PDF_NETWORKIDLE_BUDGET_MS` | não | Tempo máximo para a tentativa inicial com `networkidle` antes de fallback para `domcontentloaded` | `1200` |
 | `PDF_ASSET_WAIT_TIMEOUT_MS` | não | Janela curta para aguardar fontes/imagens após `domcontentloaded` | `600` |
@@ -76,13 +79,22 @@ PDF_RATE_LIMIT_MAX=40
 PDF_BODY_LIMIT=8mb
 PDF_MAX_CONCURRENT_JOBS=2
 PDF_MAX_PENDING_JOBS=50
-PDF_PREWARMED_SESSIONS=0
+PDF_PREWARMED_SESSIONS=1
+PDF_REUSE_SESSIONS=1
+PDF_REUSE_SESSION_MAX_USES=25
 PDF_QUEUE_WAIT_TIMEOUT_MS=15000
 PDF_LOG_PERFORMANCE=0
+PDF_LOG_ASSET_ORIGINS=0
 PDF_DEFAULT_WAIT_UNTIL=domcontentloaded
 PDF_NETWORKIDLE_BUDGET_MS=1200
 PDF_ASSET_WAIT_TIMEOUT_MS=600
 ```
+
+### Tuning recomendado
+
+- Para reduzir latência sem alterar o contrato da API, comece com `PDF_PREWARMED_SESSIONS=1`.
+- Se a memória do processo continuar saudável, teste `PDF_REUSE_SESSIONS=1` para reaproveitar sessões já abertas.
+- Se o HTML usar imagens, CSS ou fontes externas, ligue `PDF_LOG_ASSET_ORIGINS=1` temporariamente e use o log para migrar o que for possível para assets locais ou embutidos (`data:`).
 
 ## Execução
 

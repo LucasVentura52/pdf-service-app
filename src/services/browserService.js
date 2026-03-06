@@ -83,6 +83,63 @@ export function isRequestUrlAllowed(url, allowedAssetOrigins, blockPrivateNetwor
   return allowedAssetOrigins.has(parsed.origin.toLowerCase());
 }
 
+export function resolveReusableSessionTarget({
+  maxConcurrentJobs,
+  prewarmedSessions,
+  reuseSessions,
+}) {
+  const normalizedMaxConcurrentJobs = Math.max(1, Number(maxConcurrentJobs || 1));
+  const normalizedPrewarmedSessions = Math.max(0, Number(prewarmedSessions || 0));
+  const baselineTarget = reuseSessions ? 1 : 0;
+
+  return Math.min(
+    normalizedMaxConcurrentJobs,
+    Math.max(normalizedPrewarmedSessions, baselineTarget)
+  );
+}
+
+export function recordAssetRequest(assetRequests, requestUrl, resourceType, blocked = false) {
+  let parsed;
+  try {
+    parsed = new URL(requestUrl);
+  } catch {
+    return;
+  }
+
+  const protocol = parsed.protocol.toLowerCase();
+  if (!HTTP_PROTOCOLS.has(protocol)) {
+    return;
+  }
+
+  const origin = parsed.origin.toLowerCase();
+  const entry = assetRequests.get(origin) || {
+    count: 0,
+    blockedCount: 0,
+    types: new Set(),
+  };
+
+  entry.count += 1;
+  if (blocked) {
+    entry.blockedCount += 1;
+  }
+  if (resourceType) {
+    entry.types.add(resourceType);
+  }
+
+  assetRequests.set(origin, entry);
+}
+
+export function summarizeAssetRequests(assetRequests) {
+  return Array.from(assetRequests.entries())
+    .map(([origin, entry]) => ({
+      origin,
+      count: entry.count,
+      blockedCount: entry.blockedCount,
+      types: Array.from(entry.types).sort(),
+    }))
+    .sort((left, right) => left.origin.localeCompare(right.origin));
+}
+
 export function createBrowserService(config) {
   let browserPromise = null;
   let isClosing = false;
@@ -115,16 +172,20 @@ export function createBrowserService(config) {
     const context = await browser.newContext({
       serviceWorkers: "block",
     });
+    const assetRequests = new Map();
     const resolvedAllowedAssetOrigins = mergeAllowedAssetOrigins(extraAllowedAssetOrigins);
     await context.route("**/*", async (route) => {
-      const requestUrl = route.request().url();
-      if (
-        isRequestUrlAllowed(
-          requestUrl,
-          resolvedAllowedAssetOrigins,
-          config.pdfBlockPrivateNetwork
-        )
-      ) {
+      const request = route.request();
+      const requestUrl = request.url();
+      const allowed = isRequestUrlAllowed(
+        requestUrl,
+        resolvedAllowedAssetOrigins,
+        config.pdfBlockPrivateNetwork
+      );
+
+      recordAssetRequest(assetRequests, requestUrl, request.resourceType(), !allowed);
+
+      if (allowed) {
         await route.continue();
         return;
       }
@@ -137,7 +198,10 @@ export function createBrowserService(config) {
       );
       await route.abort("blockedbyclient");
     });
-    return context;
+    return {
+      context,
+      assetRequests,
+    };
   }
 
   async function launchBrowser() {
@@ -262,11 +326,190 @@ export function createBrowserService(config) {
     }
   }
 
-  function getBufferedSessionsTarget() {
-    return Math.min(config.pdfPrewarmedSessions || 0, config.pdfMaxConcurrentJobs || 1);
+  async function normalizePageBreaks(page) {
+    try {
+      await page.evaluate(() => {
+        const BREAK_SELECTOR = ".page-break, [data-pdf-page-break='always']";
+        const body = document.body;
+        if (!body) return;
+
+        for (const node of Array.from(document.querySelectorAll(BREAK_SELECTOR))) {
+          const previousElement = node.previousElementSibling;
+          if (previousElement?.matches?.(BREAK_SELECTOR)) {
+            node.remove();
+          }
+        }
+
+        while (body.lastElementChild?.matches?.(BREAK_SELECTOR)) {
+          body.lastElementChild.remove();
+        }
+
+        const lastElement = body.lastElementChild;
+        if (lastElement) {
+          lastElement.style.breakAfter = "auto";
+          lastElement.style.pageBreakAfter = "auto";
+        }
+
+        function isMeaningfulElement(element, style) {
+          if (
+            style.display === "none" ||
+            style.visibility === "hidden" ||
+            Number(style.opacity || "1") === 0
+          ) {
+            return false;
+          }
+
+          if (
+            element.matches(
+              "script, style, link, meta, noscript, template, source, track, br"
+            )
+          ) {
+            return false;
+          }
+
+          if (element.getAttribute("aria-hidden") === "true" && !element.querySelector("img, svg, canvas")) {
+            return false;
+          }
+
+          if (
+            element.matches(
+              "img, svg, canvas, video, iframe, object, embed, hr, table, thead, tbody, tfoot, tr, td, th"
+            )
+          ) {
+            return true;
+          }
+
+          const text = (element.innerText || "").replace(/\s+/g, " ").trim();
+          if (text) {
+            return true;
+          }
+
+          return false;
+        }
+
+        const meaningfulElements = new WeakSet();
+        let contentBottom = 0;
+        let lastMeaningfulElement = null;
+        for (const element of Array.from(body.querySelectorAll("*"))) {
+          const rect = element.getBoundingClientRect();
+          if (!rect.width && !rect.height) {
+            continue;
+          }
+
+          const style = window.getComputedStyle(element);
+          if (!isMeaningfulElement(element, style)) {
+            continue;
+          }
+
+          meaningfulElements.add(element);
+          lastMeaningfulElement = element;
+
+          const shouldCountAsContentEdge =
+            element.children.length === 0 ||
+            element.matches(
+              "img, svg, canvas, video, iframe, object, embed, hr, table, thead, tbody, tfoot, tr, td, th"
+            );
+
+          if (shouldCountAsContentEdge) {
+            contentBottom = Math.max(contentBottom, rect.bottom + window.scrollY);
+          }
+        }
+
+        function subtreeHasMeaningfulContent(element) {
+          if (meaningfulElements.has(element)) {
+            return true;
+          }
+
+          for (const child of Array.from(element.children || [])) {
+            if (subtreeHasMeaningfulContent(child)) {
+              return true;
+            }
+          }
+
+          return false;
+        }
+
+        if (lastMeaningfulElement) {
+          let current = lastMeaningfulElement;
+          while (current && current !== body) {
+            let sibling = current.nextElementSibling;
+            while (sibling) {
+              const nextSibling = sibling.nextElementSibling;
+              if (!subtreeHasMeaningfulContent(sibling)) {
+                sibling.remove();
+              }
+              sibling = nextSibling;
+            }
+            current = current.parentElement;
+          }
+        }
+
+        if (lastMeaningfulElement && contentBottom > 0) {
+          let current = lastMeaningfulElement;
+          while (current && current !== body) {
+            const rect = current.getBoundingClientRect();
+            const renderedBottom = rect.bottom + window.scrollY;
+            const trailingGap = renderedBottom - contentBottom;
+
+            if (trailingGap > 24) {
+              current.style.height = "auto";
+              current.style.minHeight = "0";
+              current.style.maxHeight = "none";
+              current.style.paddingBottom = "0";
+              current.style.marginBottom = "0";
+              current.style.breakInside = "auto";
+              current.style.pageBreakInside = "auto";
+              current.style.breakAfter = "auto";
+              current.style.pageBreakAfter = "auto";
+            }
+
+            current = current.parentElement;
+          }
+        }
+
+        if (contentBottom > 0) {
+          const root = document.documentElement;
+          const bodyTop = body.getBoundingClientRect().top + window.scrollY;
+          const documentBottom = Math.max(
+            root.getBoundingClientRect().bottom + window.scrollY,
+            body.getBoundingClientRect().bottom + window.scrollY,
+            root.scrollHeight,
+            body.scrollHeight
+          );
+          const trailingDocumentGap = documentBottom - contentBottom;
+
+          if (trailingDocumentGap > 48) {
+            const clippedHeight = Math.max(0, Math.ceil(contentBottom - bodyTop + 12));
+
+            if (clippedHeight > 0) {
+              for (const element of [root, body]) {
+                element.style.minHeight = "0";
+                element.style.height = `${clippedHeight}px`;
+                element.style.maxHeight = `${clippedHeight}px`;
+                element.style.paddingBottom = "0";
+                element.style.marginBottom = "0";
+                element.style.overflow = "hidden";
+                element.style.breakAfter = "auto";
+                element.style.pageBreakAfter = "auto";
+              }
+            }
+          }
+        }
+      });
+    } catch {
+      // Nao interrompe a geração por falha ao normalizar paginação.
+    }
   }
 
-  function shouldUseBufferedSession(options = {}) {
+  function getBufferedSessionsTarget() {
+    return resolveReusableSessionTarget({
+      maxConcurrentJobs: config.pdfMaxConcurrentJobs,
+      prewarmedSessions: config.pdfPrewarmedSessions,
+      reuseSessions: config.pdfReuseSessions,
+    });
+  }
+
+  function canUseDefaultSessionPool(options = {}) {
     const allowedAssetOrigins = options.allowedAssetOrigins;
     if (!allowedAssetOrigins) {
       return true;
@@ -279,6 +522,84 @@ export function createBrowserService(config) {
     return true;
   }
 
+  function resetSessionAssetRequests(session) {
+    session.assetRequests.clear();
+  }
+
+  function markSessionInUse(session) {
+    session.useCount += 1;
+    resetSessionAssetRequests(session);
+    return session;
+  }
+
+  async function destroySession(session) {
+    try {
+      await session.context.close();
+    } catch (error) {
+      console.error("Erro ao fechar contexto isolado do PDF service:", error);
+    }
+  }
+
+  async function resetReusableSession(session) {
+    try {
+      if (session.page.isClosed()) {
+        return false;
+      }
+
+      for (const contextPage of session.context.pages()) {
+        if (contextPage !== session.page) {
+          await contextPage.close();
+        }
+      }
+
+      try {
+        await session.page.goto("about:blank", {
+          waitUntil: "domcontentloaded",
+          timeout: 5000,
+        });
+      } catch {
+        await session.page.setContent("<html><body></body></html>", {
+          waitUntil: "domcontentloaded",
+          timeout: 5000,
+        });
+      }
+
+      await session.context.clearCookies();
+      await session.context.clearPermissions();
+      resetSessionAssetRequests(session);
+      return !session.page.isClosed();
+    } catch (error) {
+      console.warn("[pdf-service] Falha ao resetar sessao reutilizavel do browser.", error);
+      return false;
+    }
+  }
+
+  function canReturnSessionToPool(session) {
+    if (!config.pdfReuseSessions || !session.poolEligible || isClosing) {
+      return false;
+    }
+
+    if (session.useCount >= config.pdfReuseSessionMaxUses) {
+      return false;
+    }
+
+    return bufferedSessions.length < getBufferedSessionsTarget();
+  }
+
+  async function releaseSession(session) {
+    if (canReturnSessionToPool(session)) {
+      const resetOk = await resetReusableSession(session);
+      if (resetOk) {
+        bufferedSessions.push(session);
+        scheduleBufferedSessionWarmups();
+        return;
+      }
+    }
+
+    await destroySession(session);
+    scheduleBufferedSessionWarmups();
+  }
+
   function scheduleBufferedSessionWarmups() {
     const target = getBufferedSessionsTarget();
     if (isClosing || target <= 0) {
@@ -289,10 +610,16 @@ export function createBrowserService(config) {
       const warmupPromise = createIsolatedPageSession()
         .then(async (session) => {
           if (isClosing) {
-            await session.close();
+            await destroySession(session);
             return;
           }
-          bufferedSessions.push(session);
+
+          if (bufferedSessions.length < target) {
+            bufferedSessions.push(session);
+            return;
+          }
+
+          await destroySession(session);
         })
         .catch((error) => {
           console.warn("[pdf-service] Nao foi possivel preaquecer sessao isolada do browser.", error);
@@ -313,12 +640,12 @@ export function createBrowserService(config) {
       }
 
       if (session.page.isClosed()) {
-        await session.close();
+        await destroySession(session);
         continue;
       }
 
       scheduleBufferedSessionWarmups();
-      return session;
+      return markSessionInUse(session);
     }
 
     scheduleBufferedSessionWarmups();
@@ -327,9 +654,7 @@ export function createBrowserService(config) {
 
   async function drainBufferedSessions() {
     const sessionsToClose = bufferedSessions.splice(0, bufferedSessions.length);
-    await Promise.allSettled(
-      sessionsToClose.map((session) => session.close())
-    );
+    await Promise.allSettled(sessionsToClose.map((session) => destroySession(session)));
     await Promise.allSettled(Array.from(pendingBufferedSessionWarmups));
   }
 
@@ -350,7 +675,7 @@ export function createBrowserService(config) {
   }
 
   async function createPageWithRecovery(options = {}) {
-    if (shouldUseBufferedSession(options)) {
+    if (canUseDefaultSessionPool(options)) {
       const bufferedSession = await takeBufferedSession();
       if (bufferedSession) {
         return bufferedSession;
@@ -358,32 +683,34 @@ export function createBrowserService(config) {
     }
 
     try {
-      const session = await createIsolatedPageSession(options);
+      const session = markSessionInUse(await createIsolatedPageSession(options));
       scheduleBufferedSessionWarmups();
       return session;
     } catch {
       console.warn("[pdf-service] Falha ao criar page no contexto atual. Reiniciando browser/contexto.");
       await closeBrowser();
-      const session = await createIsolatedPageSession(options);
+      const session = markSessionInUse(await createIsolatedPageSession(options));
       scheduleBufferedSessionWarmups();
       return session;
     }
   }
 
   async function createIsolatedPageSession(options = {}) {
-    const context = await createContextWithNetworkGuard(options.allowedAssetOrigins);
+    const { context, assetRequests } = await createContextWithNetworkGuard(options.allowedAssetOrigins);
     try {
       const page = await context.newPage();
-      return {
+      const session = {
+        context,
         page,
-        close: async () => {
-          try {
-            await context.close();
-          } catch (error) {
-            console.error("Erro ao fechar contexto isolado do PDF service:", error);
-          }
-        },
+        assetRequests,
+        poolEligible: canUseDefaultSessionPool(options),
+        useCount: 0,
+        getAssetRequestSummary: () => summarizeAssetRequests(assetRequests),
       };
+      session.close = async () => {
+        await releaseSession(session);
+      };
+      return session;
     } catch (error) {
       try {
         await context.close();
@@ -426,6 +753,7 @@ export function createBrowserService(config) {
   return {
     createPageWithRecovery,
     setPageContentWithFallback,
+    normalizePageBreaks,
     warmupBrowser,
     closeBrowser,
   };

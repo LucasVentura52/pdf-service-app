@@ -29,6 +29,20 @@ function createPerformanceTracker(enabled, filename) {
   };
 }
 
+function logAssetOrigins(enabled, filename, assetSummary) {
+  if (!enabled || !assetSummary.length) return;
+
+  const details = assetSummary
+    .map((item) => {
+      const types = item.types.length ? ` [${item.types.join(",")}]` : "";
+      const blocked = item.blockedCount ? ` blocked=${item.blockedCount}` : "";
+      return `${item.origin} x${item.count}${blocked}${types}`;
+    })
+    .join(" | ");
+
+  console.log(`[pdf-service] ${filename}: assets=${details}`);
+}
+
 export function createPdfRouter({ requireToken, pdfQueue, templateService, browserService, config }) {
   const router = Router();
 
@@ -61,6 +75,7 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
       try {
         await browserService.setPageContentWithFallback(page, html, payload.options);
         performanceTracker.mark("render");
+        await browserService.normalizePageBreaks(page);
 
         const pdfBuffer = await page.pdf({
           format: payload.options?.format || "A4",
@@ -77,6 +92,11 @@ export function createPdfRouter({ requireToken, pdfQueue, templateService, brows
         res.setHeader("Content-Length", String(pdfBuffer.length));
         res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
         res.send(pdfBuffer);
+        logAssetOrigins(
+          config.pdfLogAssetOrigins,
+          filename,
+          pageSession.getAssetRequestSummary?.() || []
+        );
         performanceTracker.flush();
       } finally {
         await pageSession.close();
