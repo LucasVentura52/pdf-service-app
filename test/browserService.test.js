@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  buildChromiumLaunchOptions,
   isRequestUrlAllowed,
   recordAssetRequest,
-  resolveReusableSessionTarget,
   summarizeAssetRequests,
+  mergeAllowedAssetOrigins,
+} from "../src/services/browserNetworkPolicy.js";
+import { resolveReusableSessionTarget, canUseDefaultSessionPool } from "../src/services/browserSessionPool.js";
+import {
+  buildChromiumLaunchOptions,
 } from "../src/services/browserService.js";
+import {
+  BlockedAssetError,
+  BrowserUnavailableError,
+  normalizeBrowserError,
+} from "../src/services/pdfServiceErrors.js";
 
 test("permite asset publico quando allowlist esta vazia", () => {
   const allowed = isRequestUrlAllowed("https://cdn.example.com/image.png", new Set(), true);
@@ -94,6 +102,18 @@ test("resume requests de assets por origem e tipo", () => {
   ]);
 });
 
+test("mescla origens permitidas padrao com origens extras por requisicao", () => {
+  const merged = mergeAllowedAssetOrigins(
+    new Set(["https://sys.maisgerencia.com.br"]),
+    [" https://cdn.example.com ", ""]
+  );
+
+  assert.deepEqual(Array.from(merged).sort(), [
+    "https://cdn.example.com",
+    "https://sys.maisgerencia.com.br",
+  ]);
+});
+
 test("remove export-tagged-pdf dos default args do chromium", () => {
   const launchOptions = buildChromiumLaunchOptions({
     pdfChromiumChannel: "",
@@ -116,4 +136,31 @@ test("preserva channel e executablePath no launch do chromium", () => {
 
   assert.equal(launchOptions.channel, "chrome");
   assert.equal(launchOptions.executablePath, "/custom/chromium");
+});
+
+test("nao usa pool padrao quando a requisicao traz allowlist extra de assets", () => {
+  assert.equal(
+    canUseDefaultSessionPool({
+      allowedAssetOrigins: ["https://cdn.example.com"],
+    }),
+    false
+  );
+
+  assert.equal(canUseDefaultSessionPool({}), true);
+});
+
+test("normaliza erro de browser ausente para tipo estavel", () => {
+  const error = normalizeBrowserError(
+    new Error("browserType.launch: Executable doesn't exist at /ms-playwright/chromium")
+  );
+
+  assert.equal(error instanceof BrowserUnavailableError, true);
+  assert.equal(error.code, "BROWSER_UNAVAILABLE");
+});
+
+test("normaliza bloqueio de asset para tipo estavel", () => {
+  const error = normalizeBrowserError(new Error("net::ERR_BLOCKED_BY_CLIENT at https://cdn.example.com"));
+
+  assert.equal(error instanceof BlockedAssetError, true);
+  assert.equal(error.code, "BLOCKED_ASSET");
 });

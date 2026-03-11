@@ -2,6 +2,11 @@ import { Router } from "express";
 import { pdfRequestSchema } from "../schemas/pdfRequestSchema.js";
 import { TemplateNotFoundError } from "../services/templateService.js";
 import { QueueSaturatedError, QueueTimeoutError } from "../services/pdfQueue.js";
+import { shouldNormalizePageBreaks } from "../services/pageRenderLifecycle.js";
+import {
+  BlockedAssetError,
+  BrowserUnavailableError,
+} from "../services/pdfServiceErrors.js";
 import {
   ensureFullHtmlDocument,
   injectBaseHref,
@@ -41,6 +46,48 @@ function logAssetOrigins(enabled, filename, assetSummary) {
     .join(" | ");
 
   console.log(`[pdf-service] ${filename}: assets=${details}`);
+}
+
+function sendPdfErrorResponse(error, res) {
+  if (error instanceof QueueSaturatedError) {
+    res.setHeader("Retry-After", "5");
+    res.status(503).json({
+      message: "Fila de geração lotada. Tente novamente em instantes.",
+    });
+    return true;
+  }
+
+  if (error instanceof QueueTimeoutError) {
+    const retryAfterSeconds = Math.max(1, Math.ceil(error.timeoutMs / 1000));
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+    res.status(503).json({
+      message: "Tempo limite na fila de geração excedido. Tente novamente.",
+    });
+    return true;
+  }
+
+  if (error instanceof TemplateNotFoundError) {
+    res.status(404).json({
+      message: `Template '${error.templateId}' nao encontrado.`,
+    });
+    return true;
+  }
+
+  if (error instanceof BlockedAssetError) {
+    res.status(400).json({
+      message: error.message,
+    });
+    return true;
+  }
+
+  if (error instanceof BrowserUnavailableError) {
+    res.status(503).json({
+      message: error.message,
+    });
+    return true;
+  }
+
+  return false;
 }
 
 export function createPdfRouter({
@@ -107,8 +154,10 @@ export function createPdfRouter({
 
       await browserService.setPageContentWithFallback(page, html, payload.options);
       performanceTracker.mark("render");
-      await browserService.normalizePageBreaks(page);
-      performanceTracker.mark("normalize");
+      if (shouldNormalizePageBreaks(html)) {
+        await browserService.normalizePageBreaks(page);
+        performanceTracker.mark("normalize");
+      }
 
       const pdfBuffer = await page.pdf({
         format: payload.options?.format || "A4",
@@ -131,56 +180,13 @@ export function createPdfRouter({
         pageSession.getAssetRequestSummary?.() || []
       );
     } catch (error) {
-      if (error instanceof QueueSaturatedError) {
-        res.setHeader("Retry-After", "5");
-        res.status(503).json({
-          message: "Fila de geração lotada. Tente novamente em instantes.",
-        });
-        return;
-      }
-
-      if (error instanceof QueueTimeoutError) {
-        const retryAfterSeconds = Math.max(1, Math.ceil(error.timeoutMs / 1000));
-        res.setHeader("Retry-After", String(retryAfterSeconds));
-        res.status(503).json({
-          message: "Tempo limite na fila de geração excedido. Tente novamente.",
-        });
-        return;
-      }
-
       const message = error instanceof Error ? error.message : String(error);
       console.error("Erro ao gerar PDF:", message);
       if (error instanceof Error && error.stack) {
         console.error(error.stack);
       }
 
-      const missingBrowser =
-        /Executable doesn't exist/i.test(message) ||
-        /playwright install/i.test(message) ||
-        /browserType\.launch/i.test(message);
-
-      const blockedExternalAsset = /ERR_BLOCKED_BY_CLIENT|blockedbyclient/i.test(message);
-
-      if (error instanceof TemplateNotFoundError) {
-        res.status(404).json({
-          message: `Template '${error.templateId}' nao encontrado.`,
-        });
-        return;
-      }
-
-      if (blockedExternalAsset) {
-        res.status(400).json({
-          message:
-            "Payload requisitou recurso externo nao permitido. Inclua a origem em PDF_ALLOWED_ASSET_ORIGINS ou deixe a allowlist vazia para permitir assets publicos.",
-        });
-        return;
-      }
-
-      if (missingBrowser) {
-        res.status(503).json({
-          message:
-            "Playwright browser nao instalado no ambiente. Execute 'playwright install chromium' no build/deploy.",
-        });
+      if (sendPdfErrorResponse(error, res)) {
         return;
       }
 
