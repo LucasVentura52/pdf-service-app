@@ -84,6 +84,7 @@ cp .env.example .env
 | `PDF_DEFAULT_WAIT_UNTIL` | não | Estratégia padrão de espera do Playwright | `domcontentloaded` |
 | `PDF_NETWORKIDLE_BUDGET_MS` | não | Limite da tentativa com `networkidle` antes do fallback | `1200` |
 | `PDF_ASSET_WAIT_TIMEOUT_MS` | não | Janela curta para aguardar fontes e imagens | `600` |
+| `PDF_SHUTDOWN_GRACE_PERIOD_MS` | não | Tempo máximo para shutdown gracioso antes do fechamento forçado das conexões restantes | `30000` |
 | `PDF_CHROMIUM_CHANNEL` | não | Canal opcional do Chromium | vazio |
 | `PDF_CHROMIUM_EXECUTABLE_PATH` | não | Caminho absoluto do executável do Chromium/Chrome | vazio |
 
@@ -111,6 +112,7 @@ PDF_LOG_ASSET_ORIGINS=0
 PDF_DEFAULT_WAIT_UNTIL=domcontentloaded
 PDF_NETWORKIDLE_BUDGET_MS=1200
 PDF_ASSET_WAIT_TIMEOUT_MS=600
+PDF_SHUTDOWN_GRACE_PERIOD_MS=30000
 ```
 
 ## Deploy
@@ -128,7 +130,7 @@ O script `postinstall` executa a instalação do Chromium com `PLAYWRIGHT_BROWSE
 
 ### `GET /health`
 
-Retorna o estado básico do serviço.
+Retorna o estado operacional do serviço.
 
 Exemplo de resposta:
 
@@ -136,6 +138,22 @@ Exemplo de resposta:
 {
   "status": "ok",
   "timestamp": "2026-03-06T12:00:00.000Z",
+  "readiness": {
+    "ready": true,
+    "code": "READY",
+    "message": "Servico pronto para gerar PDFs."
+  },
+  "operational": {
+    "phase": "ready",
+    "warmupCompleted": true,
+    "warmupError": null,
+    "drainStartedAt": null,
+    "readiness": {
+      "ready": true,
+      "code": "READY",
+      "message": "Servico pronto para gerar PDFs."
+    }
+  },
   "queue": {
     "activeJobs": 0,
     "pendingJobs": 0,
@@ -159,6 +177,27 @@ Exemplo de resposta:
     "maxConcurrentJobs": 2,
     "maxPendingJobs": 50,
     "queueWaitTimeoutMs": 15000
+  }
+}
+```
+
+### `GET /ready`
+
+Probe de prontidão para balanceador, deploy e orquestrador.
+
+- responde `200` quando o warmup foi concluído e o serviço pode aceitar `POST /pdf`;
+- responde `503` durante startup, falha de warmup, ausência de token ou draining.
+
+Exemplo de resposta:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-03-06T12:00:00.000Z",
+  "readiness": {
+    "ready": true,
+    "code": "READY",
+    "message": "Servico pronto para gerar PDFs."
   }
 }
 ```

@@ -14,12 +14,13 @@ import { createBrowserService } from "./services/browserService.js";
 import { createNativeReportPdfService } from "./services/nativeReportPdfService.js";
 import { createPdfQueue } from "./services/pdfQueue.js";
 import { createTemplateService } from "./services/templateService.js";
+import { createOperationalState } from "./services/operationalState.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 
-function buildApp() {
+export function buildApp() {
   const templateService = createTemplateService({ templateDir: TEMPLATE_DIR });
   const browserService = createBrowserService(config);
   const nativeReportPdfService = createNativeReportPdfService();
@@ -29,6 +30,9 @@ function buildApp() {
     acquireTimeoutMs: config.pdfQueueWaitTimeoutMs,
   });
   const requireToken = createRequireToken(config.pdfServiceTokens);
+  const operationalState = createOperationalState({
+    hasRequiredToken: config.pdfServiceTokens.length > 0,
+  });
 
   const app = express();
   app.disable("x-powered-by");
@@ -52,6 +56,7 @@ function buildApp() {
       browserService,
       templateService,
       config,
+      operationalState,
     })
   );
   app.use(
@@ -63,6 +68,7 @@ function buildApp() {
       browserService,
       nativeReportPdfService,
       config,
+      operationalState,
     })
   );
 
@@ -71,15 +77,22 @@ function buildApp() {
   return {
     app,
     warmup: async () => {
-      await Promise.all([templateService.warmupTemplateCache(), browserService.warmupBrowser()]);
+      try {
+        await Promise.all([templateService.warmupTemplateCache(), browserService.warmupBrowser()]);
+        operationalState.markWarmupSuccess();
+      } catch (error) {
+        operationalState.markWarmupFailure(error);
+        throw error;
+      }
     },
     closeBrowser: () => browserService.closeBrowser(),
+    operationalState,
   };
 }
 
 export function startServer() {
   assertCriticalConfig();
-  const { app, warmup, closeBrowser } = buildApp();
+  const { app, warmup, closeBrowser, operationalState } = buildApp();
   const server = app.listen(config.port, () => {
     console.log(`[pdf-service] running on http://localhost:${config.port}`);
     console.log(
@@ -88,11 +101,14 @@ export function startServer() {
     console.log(
       `[pdf-service] fila configurada com maxPendingJobs=${config.pdfMaxPendingJobs} e queueWaitTimeoutMs=${config.pdfQueueWaitTimeoutMs}.`
     );
-    void warmup();
+    void warmup().catch((error) => {
+      console.error("[pdf-service] warmup inicial falhou.", error);
+    });
   });
 
   return {
     server,
     closeBrowser,
+    operationalState,
   };
 }

@@ -50,10 +50,23 @@ export function createPdfRouter({
   browserService,
   nativeReportPdfService,
   config,
+  operationalState,
 }) {
   const router = Router();
 
   router.post("/", requireToken, async (req, res) => {
+    const readiness = operationalState?.getReadiness?.();
+    if (readiness && !readiness.ready) {
+      if (readiness.code === "DRAINING") {
+        res.setHeader("Retry-After", "10");
+      }
+      res.status(503).json({
+        message: readiness.message,
+        code: readiness.code,
+      });
+      return;
+    }
+
     const parsed = pdfRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({

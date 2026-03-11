@@ -92,6 +92,10 @@ export const config = {
   pdfDefaultWaitUntil: normalizeWaitUntil(process.env.PDF_DEFAULT_WAIT_UNTIL, "domcontentloaded"),
   pdfNetworkidleBudgetMs: Math.max(300, Number(process.env.PDF_NETWORKIDLE_BUDGET_MS || 1200)),
   pdfAssetWaitTimeoutMs: Math.max(0, Number(process.env.PDF_ASSET_WAIT_TIMEOUT_MS || 600)),
+  pdfShutdownGracePeriodMs: Math.max(
+    1000,
+    Number(process.env.PDF_SHUTDOWN_GRACE_PERIOD_MS || 30000)
+  ),
   trustProxy: parseTrustProxy(process.env.PDF_TRUST_PROXY),
   normalizedAllowedOrigins: new Set(
     corsOriginSeeds.map((origin) => normalizeOrigin(origin)).filter(Boolean)
