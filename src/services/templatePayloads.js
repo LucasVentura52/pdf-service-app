@@ -1,3 +1,8 @@
+import {
+  createLegacyPayloadAdapters,
+  isLegacyPeopleReportPayload,
+} from "./legacyPayloadAdapters.js";
+
 const REPORT_COMPACT_ROWS_THRESHOLD = 800;
 const REPORT_ULTRA_COMPACT_ROWS_THRESHOLD = 1800;
 const PEOPLE_REPORT_TEMPLATE_ID = "peopleReport";
@@ -6,10 +11,6 @@ const PROMISSORY_NOTES_PER_PAGE = 4;
 
 function normalizeIdentifier(value) {
   return String(value || "").trim().toLowerCase();
-}
-
-function normalizeLookupValue(value) {
-  return normalizeIdentifier(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function hasVisibleReportValue(value) {
@@ -286,48 +287,12 @@ function buildPeopleReportTemplateData(sourceData) {
 }
 
 export function isPeopleReportPayload(payload) {
-  const templateId = normalizeIdentifier(payload?.templateId);
-
-  if (templateId === normalizeIdentifier(PEOPLE_REPORT_TEMPLATE_ID)) {
-    return true;
-  }
-
-  if (templateId !== "report") {
-    return false;
-  }
-
-  if (normalizeIdentifier(payload?.data?.layout?.variant) !== "plain-table") {
-    return false;
-  }
-
-  const filename = normalizeLookupValue(payload?.filename);
-  if (
-    filename.includes("relatorio-pessoas-cadastradas") ||
-    filename.includes("pessoas-cadastradas")
-  ) {
-    return true;
-  }
-
-  const firstSection = Array.isArray(payload?.data?.sections) ? payload.data.sections[0] : null;
-  const columnsCount = Array.isArray(firstSection?.columns)
-    ? firstSection.columns.length
-    : Math.max(0, Number(firstSection?.columnsCount || 0));
-
-  return columnsCount === 7;
+  return isLegacyPeopleReportPayload(payload);
 }
 
-const payloadAdapters = [
-  {
-    id: PEOPLE_REPORT_TEMPLATE_ID,
-    matches: isPeopleReportPayload,
-    resolve(payload) {
-      return {
-        templateId: PEOPLE_REPORT_TEMPLATE_ID,
-        data: buildPeopleReportTemplateData(payload?.data),
-      };
-    },
-  },
-];
+const payloadAdapters = createLegacyPayloadAdapters({
+  buildPeopleReportTemplateData,
+});
 
 const dataSanitizers = new Map([
   ["promissoryNote", sanitizePromissoryNoteData],
@@ -356,4 +321,3 @@ export function resolveTemplatePayload(payload = {}) {
     data: sanitizeTemplateData(payload.templateId, payload.data),
   };
 }
-
