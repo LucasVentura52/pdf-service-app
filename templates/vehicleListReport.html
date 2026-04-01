@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page {
+      size: A4;
+      margin: 8mm;
+    }
+
+    :root {
+      --line: #e5e7eb;
+      --line-soft: #eef2f7;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --accent: #e65100;
+      --bg-soft: #f8fafc;
+      --bg-chip: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: var(--text-main);
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .report-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 4mm;
+      margin-bottom: 4.5mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .report-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.68);
+    }
+
+    .report-total {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .vehicle-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3mm;
+    }
+
+    .vehicle-card {
+      display: grid;
+      grid-template-columns: 1.6mm 37mm minmax(0, 1fr) 24mm;
+      gap: 3.2mm;
+      align-items: center;
+      padding: 3.2mm;
+      border: 1px solid var(--line);
+      border-radius: 3.4mm;
+      background: #fff;
+      box-shadow: 0 1mm 2.5mm rgba(15, 23, 42, 0.05);
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .vehicle-card__status-bar {
+      width: 100%;
+      height: 26mm;
+      border-radius: 999px;
+      align-self: center;
+    }
+
+    .vehicle-card__media {
+      width: 37mm;
+      height: 26mm;
+      border: 1px solid var(--line);
+      border-radius: 2.8mm;
+      overflow: hidden;
+      background: #f3f4f6;
+    }
+
+    .vehicle-card__media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .vehicle-card__media-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2mm;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      background:
+        linear-gradient(135deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%) -4px 0/8px 8px,
+        linear-gradient(225deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%) -4px 0/8px 8px,
+        linear-gradient(315deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%) 0px 0/8px 8px,
+        linear-gradient(45deg, rgba(0, 0, 0, 0.03) 25%, transparent 25%) 0px 0/8px 8px,
+        #f3f4f6;
+    }
+
+    .vehicle-card__content {
+      min-width: 0;
+    }
+
+    .vehicle-card__meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.4mm 2mm;
+      margin-bottom: 1.4mm;
+    }
+
+    .vehicle-card__code {
+      font-size: 10px;
+      font-weight: 600;
+      color: #374151;
+      white-space: nowrap;
+    }
+
+    .vehicle-card__badge,
+    .vehicle-card__availability,
+    .vehicle-card__condition {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 0.8mm 1.8mm;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1.1;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .vehicle-card__badge--sold {
+      background: #ffebee;
+      color: #c62828;
+      border-color: #ffcdd2;
+    }
+
+    .vehicle-card__badge--stock {
+      background: #e6f4ea;
+      color: #2e7d32;
+      border-color: #c8e6c9;
+    }
+
+    .vehicle-card__badge--registered {
+      background: #e3f2fd;
+      color: #1565c0;
+      border-color: #bbdefb;
+    }
+
+    .vehicle-card__availability--active {
+      background: #f0fdf4;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .vehicle-card__availability--inactive {
+      background: #fef2f2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .vehicle-card__title-line {
+      margin-bottom: 0.7mm;
+      color: #111827;
+      font-weight: 700;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .vehicle-card__price {
+      color: var(--accent);
+      font-size: 15px;
+      margin-right: 2mm;
+      white-space: nowrap;
+    }
+
+    .vehicle-card__title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .vehicle-card__path {
+      margin-bottom: 1.9mm;
+      font-size: 9.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.35px;
+      word-break: break-word;
+    }
+
+    .vehicle-card__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5mm;
+    }
+
+    .vehicle-chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      padding: 0.8mm 1.7mm;
+      border-radius: 2.2mm;
+      border: 1px solid var(--line-soft);
+      background: var(--bg-chip);
+      color: #4b5563;
+      font-size: 9.5px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .vehicle-chip--plate {
+      background: #e8f1ff;
+      color: #1e40af;
+      border-color: #bfdbfe;
+    }
+
+    .vehicle-chip--fuel {
+      background: #fff4e6;
+      color: #c2410c;
+      border-color: #fed7aa;
+    }
+
+    .vehicle-chip--owned {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .vehicle-chip--consigned {
+      background: #fff7ed;
+      color: #c2410c;
+      border-color: #fdba74;
+    }
+
+    .vehicle-chip--test-drive {
+      background: #ecfeff;
+      color: #0f766e;
+      border-color: #99f6e4;
+    }
+
+    .vehicle-card__aside {
+      align-self: start;
+      display: flex;
+      justify-content: end;
+    }
+
+    .vehicle-card__condition {
+      max-width: 24mm;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: #f3f4f6;
+      color: var(--text-muted);
+      border-color: #e5e7eb;
+    }
+
+    .empty-state {
+      padding: 8mm 6mm;
+      border: 1px dashed #d1d5db;
+      border-radius: 3.4mm;
+      background: var(--bg-soft);
+      color: var(--text-muted);
+      text-align: center;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="report-head">
+    {{#title}}
+    <h1 class="report-title">{{title}}</h1>
+    {{/title}}
+    {{#totalCountLabel}}
+    <div class="report-total">{{totalCountLabel}}</div>
+    {{/totalCountLabel}}
+  </div>
+
+  <section class="vehicle-list">
+    {{#vehicles}}
+    <article class="vehicle-card">
+      <div class="vehicle-card__status-bar" style="background: {{statusBarColor}};"></div>
+
+      <div class="vehicle-card__media">
+        {{#photo}}
+        <img src="{{photo}}" alt="" referrerpolicy="no-referrer" />
+        {{/photo}}
+        {{^photo}}
+        <div class="vehicle-card__media-fallback">{{photoFallbackLabel}}</div>
+        {{/photo}}
+      </div>
+
+      <div class="vehicle-card__content">
+        <div class="vehicle-card__meta">
+          <span class="vehicle-card__code">{{codeLabel}}: {{code}}</span>
+          <span class="vehicle-card__badge vehicle-card__badge--{{badgeTone}}">{{badgeLabel}}</span>
+          <span class="vehicle-card__availability vehicle-card__availability--{{availabilityTone}}">
+            {{availabilityLabel}}
+          </span>
+        </div>
+
+        <div class="vehicle-card__title-line">
+          <span class="vehicle-card__price">{{price}}</span>
+          <span class="vehicle-card__title">{{title}}</span>
+        </div>
+
+        <div class="vehicle-card__path">{{path}}</div>
+
+        <div class="vehicle-card__chips">
+          {{#chips}}
+          <span class="vehicle-chip vehicle-chip--{{tone}}">{{text}}</span>
+          {{/chips}}
+        </div>
+      </div>
+
+      <div class="vehicle-card__aside">
+        <div class="vehicle-card__condition" style="color: {{conditionTextColor}}; background: {{conditionBgColor}};">
+          {{conditionLabel}}
+        </div>
+      </div>
+    </article>
+    {{/vehicles}}
+
+    {{^vehicles}}
+    <div class="empty-state">{{emptyLabel}}</div>
+    {{/vehicles}}
+  </section>
+</body>
+
+</html>
