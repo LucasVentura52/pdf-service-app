@@ -14,7 +14,7 @@ export class TemplateNotFoundError extends Error {
   }
 }
 
-export function createTemplateService({ templateDir }) {
+export function createTemplateService({ templateDir, imageAssetOptimizer = null }) {
   const resolvedTemplateDir = path.resolve(templateDir);
   const templateCache = new Map();
 
@@ -49,8 +49,11 @@ export function createTemplateService({ templateDir }) {
 
   async function resolveHtmlFromPayload(payload) {
     const resolved = resolveTemplatePayload(payload);
+    const optimizedData = imageAssetOptimizer?.optimizeTemplateData
+      ? await imageAssetOptimizer.optimizeTemplateData(resolved.templateId, resolved.data)
+      : resolved.data;
     const template = await loadTemplate(resolved.templateId);
-    return Mustache.render(template, resolved.data);
+    return Mustache.render(template, optimizedData);
   }
 
   async function warmupTemplateCache() {
@@ -82,4 +85,3 @@ export function createTemplateService({ templateDir }) {
     getStats,
   };
 }
-

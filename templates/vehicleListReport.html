@@ -35,9 +35,9 @@
     }
 
     .report-head {
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
       gap: 4mm;
       margin-bottom: 4.5mm;
       page-break-inside: avoid;
@@ -49,6 +49,7 @@
       font-size: 15px;
       font-weight: 700;
       color: rgba(0, 0, 0, 0.68);
+      align-self: end;
     }
 
     .report-total {
@@ -56,6 +57,22 @@
       font-weight: 700;
       color: var(--text-muted);
       white-space: nowrap;
+      justify-self: end;
+      align-self: end;
+    }
+
+    .report-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .report-logo img {
+      display: block;
+      max-width: 32mm;
+      max-height: 16mm;
+      object-fit: contain;
     }
 
     .vehicle-list {
@@ -300,6 +317,11 @@
     {{#title}}
     <h1 class="report-title">{{title}}</h1>
     {{/title}}
+    <div class="report-logo">
+      {{#company.logo}}
+      <img src="{{company.logo}}" alt="{{company.nomeFantasia}}" referrerpolicy="no-referrer" />
+      {{/company.logo}}
+    </div>
     {{#totalCountLabel}}
     <div class="report-total">{{totalCountLabel}}</div>
     {{/totalCountLabel}}

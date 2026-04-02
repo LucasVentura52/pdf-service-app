@@ -13,6 +13,7 @@ import { createPdfRouter } from "./routes/pdfRoute.js";
 import { createBrowserService } from "./services/browserService.js";
 import { createNativeReportPdfService } from "./services/nativeReportPdfService.js";
 import { createPdfQueue } from "./services/pdfQueue.js";
+import { createImageAssetOptimizer } from "./services/imageAssetOptimizer.js";
 import { createTemplateService } from "./services/templateService.js";
 import { createOperationalState } from "./services/operationalState.js";
 
@@ -21,7 +22,11 @@ const __dirname = path.dirname(__filename);
 const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
 
 export function buildApp() {
-  const templateService = createTemplateService({ templateDir: TEMPLATE_DIR });
+  const imageAssetOptimizer = createImageAssetOptimizer(config);
+  const templateService = createTemplateService({
+    templateDir: TEMPLATE_DIR,
+    imageAssetOptimizer,
+  });
   const browserService = createBrowserService(config);
   const nativeReportPdfService = createNativeReportPdfService();
   const pdfQueue = createPdfQueue({

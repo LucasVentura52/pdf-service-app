@@ -92,6 +92,12 @@ export const config = {
   pdfDefaultWaitUntil: normalizeWaitUntil(process.env.PDF_DEFAULT_WAIT_UNTIL, "domcontentloaded"),
   pdfNetworkidleBudgetMs: Math.max(300, Number(process.env.PDF_NETWORKIDLE_BUDGET_MS || 1200)),
   pdfAssetWaitTimeoutMs: Math.max(0, Number(process.env.PDF_ASSET_WAIT_TIMEOUT_MS || 600)),
+  pdfImageFetchTimeoutMs: Math.max(500, Number(process.env.PDF_IMAGE_FETCH_TIMEOUT_MS || 8000)),
+  pdfImageCacheTtlMs: Math.max(1000, Number(process.env.PDF_IMAGE_CACHE_TTL_MS || 300000)),
+  pdfImageOptimizeCacheEntries: Math.max(
+    10,
+    Number(process.env.PDF_IMAGE_OPTIMIZE_CACHE_ENTRIES || 300)
+  ),
   pdfShutdownGracePeriodMs: Math.max(
     1000,
     Number(process.env.PDF_SHUTDOWN_GRACE_PERIOD_MS || 30000)
