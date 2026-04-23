@@ -93,6 +93,33 @@ function buildCacheKey(sourceUrl, variant) {
   });
 }
 
+const DEFAULT_IMAGE_VARIANT = { width: 900, height: 680, quality: 78 };
+const DEFAULT_LOGO_VARIANT = { width: 320, height: 160, quality: 82 };
+
+function pickVariantForKey(keyName) {
+  const normalized = String(keyName || "").trim().toLowerCase();
+
+  if (!normalized) {
+    return DEFAULT_IMAGE_VARIANT;
+  }
+
+  if (normalized.includes("logo")) {
+    return DEFAULT_LOGO_VARIANT;
+  }
+
+  if (
+    normalized.includes("image") ||
+    normalized.includes("imagem") ||
+    normalized.includes("foto") ||
+    normalized.includes("photo") ||
+    normalized === "url"
+  ) {
+    return DEFAULT_IMAGE_VARIANT;
+  }
+
+  return null;
+}
+
 function pickTemplateVariants(templateId) {
   switch (String(templateId || "").trim()) {
     case "vehicleListReport":
@@ -121,6 +148,10 @@ function pickTemplateVariants(templateId) {
       return [{ path: ["logoUrl"], width: 320, height: 160, quality: 82 }];
     case "receipt":
       return [{ path: ["logoGaragem"], width: 320, height: 160, quality: 82 }];
+    case "commissionReport":
+      return [{ path: ["rows", "*", "cells", "*", "detailCard", "image"], width: 420, height: 320, quality: 72 }];
+    case "vehicleChecklist":
+      return [{ path: ["items", "*", "photos", "*", "url"], width: 900, height: 680, quality: 78 }];
     default:
       return [];
   }
@@ -128,6 +159,47 @@ function pickTemplateVariants(templateId) {
 
 export function createImageAssetOptimizer(config) {
   const cache = new Map();
+
+  async function optimizeLikelyImageUrls(value, keyName = "") {
+    if (Array.isArray(value)) {
+      const results = await Promise.all(value.map((item) => optimizeLikelyImageUrls(item, keyName)));
+      return results.some((item, index) => item !== value[index]) ? results : value;
+    }
+
+    if (!value || typeof value !== "object") {
+      if (typeof value !== "string") {
+        return value;
+      }
+
+      const variant = pickVariantForKey(keyName);
+      const candidate = String(value || "").trim();
+
+      if (!variant || !isAllowedRemoteUrl(candidate, config)) {
+        return value;
+      }
+
+      return fetchOptimizedDataUrl(candidate, variant);
+    }
+
+    const entries = await Promise.all(
+      Object.entries(value).map(async ([entryKey, entryValue]) => {
+        const optimizedValue = await optimizeLikelyImageUrls(entryValue, entryKey);
+        return [entryKey, optimizedValue];
+      })
+    );
+
+    let changed = false;
+    const nextValue = {};
+
+    for (const [entryKey, optimizedValue] of entries) {
+      nextValue[entryKey] = optimizedValue;
+      if (optimizedValue !== value[entryKey]) {
+        changed = true;
+      }
+    }
+
+    return changed ? nextValue : value;
+  }
 
   function pruneCache() {
     while (cache.size > config.pdfImageOptimizeCacheEntries) {
@@ -256,7 +328,7 @@ export function createImageAssetOptimizer(config) {
       });
     }
 
-    return nextData;
+    return optimizeLikelyImageUrls(nextData);
   }
 
   function getStats() {
