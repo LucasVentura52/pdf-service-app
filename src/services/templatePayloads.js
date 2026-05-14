@@ -10,7 +10,12 @@ const PEOPLE_REPORT_EMPTY_LABEL = "Sem dados.";
 const PROMISSORY_NOTES_PER_PAGE = 4;
 
 function normalizeIdentifier(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "")
+    .trim()
+    .toLowerCase();
 }
 
 function hasVisibleReportValue(value) {
@@ -205,6 +210,36 @@ function sanitizePromissoryNoteData(data) {
   };
 }
 
+function sanitizeViewVehicleData(data) {
+  if (!data || typeof data !== "object") {
+    return data || {};
+  }
+
+  const blockedDetailLabels = new Set(["renavam", "enginenumber", "chassisnumber", "nochassi"]);
+  const details = Array.isArray(data.details)
+    ? data.details.filter((item) => {
+        const label = normalizeIdentifier(item?.label);
+        return !blockedDetailLabels.has(label);
+      })
+    : data.details;
+
+  const vehicle =
+    data.vehicle && typeof data.vehicle === "object"
+      ? {
+          ...data.vehicle,
+          renavam: undefined,
+          numMotor: undefined,
+          chassi: undefined,
+        }
+      : data.vehicle;
+
+  return {
+    ...data,
+    vehicle,
+    details,
+  };
+}
+
 function sanitizeReportData(data) {
   if (!data || typeof data !== "object") {
     return data || {};
@@ -297,6 +332,7 @@ const payloadAdapters = createLegacyPayloadAdapters({
 const dataSanitizers = new Map([
   ["promissoryNote", sanitizePromissoryNoteData],
   ["report", sanitizeReportData],
+  ["viewVehicle", sanitizeViewVehicleData],
 ]);
 
 export function sanitizeTemplateData(templateId, data) {

@@ -252,3 +252,30 @@ test("template promissoryNote reagruppa notas em 4 por pagina", () => {
   assert.equal(sanitized.pages[0].notes.length, 4);
   assert.equal(sanitized.pages[1].notes.length, 1);
 });
+
+test("template viewVehicle remove campos sensiveis do pdf", () => {
+  const sanitized = sanitizeTemplateData("viewVehicle", {
+    vehicle: {
+      nome: "Veiculo Teste",
+      renavam: "12345678901",
+      numMotor: "MOTOR123",
+      chassi: "CHASSI123",
+      potenciaMotor: "1.0",
+    },
+    details: [
+      { label: "Renavam", value: "12345678901" },
+      { label: "Ano", value: "2024 / 2025" },
+      { label: "Engine Number", value: "MOTOR123" },
+      { label: "Chassis Number", value: "CHASSI123" },
+      { label: "Placa", value: "ABC1D23" },
+    ],
+  });
+
+  assert.equal(sanitized.vehicle.renavam, undefined);
+  assert.equal(sanitized.vehicle.numMotor, undefined);
+  assert.equal(sanitized.vehicle.chassi, undefined);
+  assert.deepEqual(
+    sanitized.details.map((item) => item.label),
+    ["Ano", "Placa"]
+  );
+});
