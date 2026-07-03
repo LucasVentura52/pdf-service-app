@@ -44,17 +44,25 @@ const pdfOptionsSchema = z
 export const pdfRequestSchema = z
   .object({
     filename: z.string().trim().min(1).max(120).optional(),
-    templateId: z.string().trim().regex(/^[a-z0-9_-]+$/i).max(80),
-    html: z.never().optional(),
-    data: z.record(z.any()).default({}),
+    html: z.string().trim().min(1).max(2_000_000),
+    templateId: z.unknown().optional(),
+    data: z.unknown().optional(),
     options: pdfOptionsSchema.optional(),
   })
   .superRefine((value, ctx) => {
-    if (!value.templateId) {
+    if ("templateId" in value) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Informe 'templateId'.",
+        message: "Campo legado 'templateId' nao e suportado.",
         path: ["templateId"],
+      });
+    }
+
+    if ("data" in value) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Campo legado 'data' nao e suportado.",
+        path: ["data"],
       });
     }
   });

@@ -1,5 +1,3 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -11,24 +9,11 @@ import { createRequireToken } from "./middleware/requireToken.js";
 import { createHealthRouter } from "./routes/healthRoute.js";
 import { createPdfRouter } from "./routes/pdfRoute.js";
 import { createBrowserService } from "./services/browserService.js";
-import { createNativeReportPdfService } from "./services/nativeReportPdfService.js";
 import { createPdfQueue } from "./services/pdfQueue.js";
-import { createImageAssetOptimizer } from "./services/imageAssetOptimizer.js";
-import { createTemplateService } from "./services/templateService.js";
 import { createOperationalState } from "./services/operationalState.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const TEMPLATE_DIR = path.resolve(__dirname, "../templates");
-
 export function buildApp() {
-  const imageAssetOptimizer = createImageAssetOptimizer(config);
-  const templateService = createTemplateService({
-    templateDir: TEMPLATE_DIR,
-    imageAssetOptimizer,
-  });
   const browserService = createBrowserService(config);
-  const nativeReportPdfService = createNativeReportPdfService();
   const pdfQueue = createPdfQueue({
     maxConcurrentJobs: config.pdfMaxConcurrentJobs,
     maxPendingJobs: config.pdfMaxPendingJobs,
@@ -59,7 +44,6 @@ export function buildApp() {
     createHealthRouter({
       pdfQueue,
       browserService,
-      templateService,
       config,
       operationalState,
     })
@@ -69,9 +53,7 @@ export function buildApp() {
     createPdfRouter({
       requireToken,
       pdfQueue,
-      templateService,
       browserService,
-      nativeReportPdfService,
       config,
       operationalState,
     })
@@ -83,7 +65,7 @@ export function buildApp() {
     app,
     warmup: async () => {
       try {
-        await Promise.all([templateService.warmupTemplateCache(), browserService.warmupBrowser()]);
+        await browserService.warmupBrowser();
         operationalState.markWarmupSuccess();
       } catch (error) {
         operationalState.markWarmupFailure(error);

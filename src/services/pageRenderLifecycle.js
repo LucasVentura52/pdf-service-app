@@ -11,6 +11,22 @@ export function shouldNormalizePageBreaks(html) {
   );
 }
 
+export function hasLikelyVisualAssets(html) {
+  const documentHtml = String(html || "");
+  if (!documentHtml) return false;
+
+  return (
+    /<img[\s>]/i.test(documentHtml) ||
+    /<svg[\s>]/i.test(documentHtml) ||
+    /<canvas[\s>]/i.test(documentHtml) ||
+    /<iframe[\s>]/i.test(documentHtml) ||
+    /<link[^>]+rel=["']stylesheet["']/i.test(documentHtml) ||
+    /<style[\s>]/i.test(documentHtml) ||
+    /@font-face/i.test(documentHtml) ||
+    /background(?:-image)?\s*:/i.test(documentHtml)
+  );
+}
+
 export function createPageRenderLifecycle(config) {
   async function setPageContentWithFallback(page, html, options) {
     const waitUntil = normalizeWaitUntil(options?.waitUntil, config.pdfDefaultWaitUntil);
@@ -51,6 +67,7 @@ export function createPageRenderLifecycle(config) {
 
     const shouldWaitAssets =
       config.pdfAssetWaitTimeoutMs > 0 &&
+      hasLikelyVisualAssets(html) &&
       (waitUntil === "domcontentloaded" || usedFallbackWaitUntil);
 
     if (shouldWaitAssets) {

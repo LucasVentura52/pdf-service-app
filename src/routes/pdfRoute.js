@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { pdfRequestSchema } from "../schemas/pdfRequestSchema.js";
-import { TemplateNotFoundError } from "../services/templateService.js";
 import { QueueSaturatedError, QueueTimeoutError } from "../services/pdfQueue.js";
 import { shouldNormalizePageBreaks } from "../services/pageRenderLifecycle.js";
 import {
@@ -66,13 +65,6 @@ function sendPdfErrorResponse(error, res) {
     return true;
   }
 
-  if (error instanceof TemplateNotFoundError) {
-    res.status(404).json({
-      message: `Template '${error.templateId}' nao encontrado.`,
-    });
-    return true;
-  }
-
   if (error instanceof BlockedAssetError) {
     res.status(400).json({
       message: error.message,
@@ -93,9 +85,7 @@ function sendPdfErrorResponse(error, res) {
 export function createPdfRouter({
   requireToken,
   pdfQueue,
-  templateService,
   browserService,
-  nativeReportPdfService,
   config,
   operationalState,
 }) {
@@ -133,18 +123,7 @@ export function createPdfRouter({
       releaseJob = await pdfQueue.acquirePdfJob();
       performanceTracker.mark("queue");
 
-      if (nativeReportPdfService?.canRenderPayload?.(payload)) {
-        const pdfBuffer = await nativeReportPdfService.generateFromPayload(payload);
-        performanceTracker.mark("nativePdf");
-
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Length", String(pdfBuffer.length));
-        res.setHeader("Content-Disposition", `inline; filename="${filename}.pdf"`);
-        res.send(pdfBuffer);
-        return;
-      }
-
-      let html = await templateService.resolveHtmlFromPayload(payload);
+      let html = payload.html;
       html = ensureFullHtmlDocument(html);
       html = injectBaseHref(html, config.pdfPublicBaseUrl);
       performanceTracker.mark("html");

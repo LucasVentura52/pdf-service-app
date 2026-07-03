@@ -145,20 +145,11 @@ export function createBrowserService(config) {
         }
       }
 
-      try {
-        await session.page.goto("about:blank", {
-          waitUntil: "domcontentloaded",
-          timeout: 5000,
-        });
-      } catch {
-        await session.page.setContent("<html><body></body></html>", {
-          waitUntil: "domcontentloaded",
-          timeout: 5000,
-        });
-      }
+      await session.page.setContent("<html><body></body></html>", {
+        waitUntil: "domcontentloaded",
+        timeout: 5000,
+      });
 
-      await session.context.clearCookies();
-      await session.context.clearPermissions();
       resetSessionAssetRequests(session);
       return !session.page.isClosed();
     } catch (error) {

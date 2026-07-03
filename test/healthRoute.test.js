@@ -66,7 +66,6 @@ test("GET /health expõe status degraded quando readiness nao esta pronta", asyn
     operationalState,
     pdfQueue: { getStats: () => ({ activeJobs: 0 }) },
     browserService: { getStats: () => ({ browserLaunched: false }) },
-    templateService: { getStats: () => ({ cachedTemplates: 0 }) },
     config: {
       pdfMaxConcurrentJobs: 2,
       pdfMaxPendingJobs: 50,
@@ -79,4 +78,5 @@ test("GET /health expõe status degraded quando readiness nao esta pronta", asyn
   assert.equal(response.body.status, "degraded");
   assert.equal(response.body.readiness.code, "MISSING_TOKEN");
   assert.equal(response.body.queue.activeJobs, 0);
+  assert.equal(response.body.limits.maxConcurrentJobs, 2);
 });

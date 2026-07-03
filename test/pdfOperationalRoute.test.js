@@ -65,24 +65,17 @@ test("POST /pdf rejeita novas requisicoes enquanto o servico esta draining", asy
         throw new Error("queue should not be touched while draining");
       },
     },
-    templateService: {
-      resolveHtmlFromPayload: async () => "<html><body>noop</body></html>",
-    },
     browserService: {},
-    nativeReportPdfService: {
-      canRenderPayload: () => false,
-    },
     config: {},
     operationalState,
   });
 
   const response = await dispatch(router, {
-    url: "/",
-    body: {
-      templateId: "contract",
-      data: {},
-    },
-  });
+      url: "/",
+      body: {
+        html: "<div>noop</div>",
+      },
+    });
 
   assert.equal(response.statusCode, 503);
   assert.equal(response.headers["retry-after"], "10");
@@ -98,28 +91,21 @@ test("POST /pdf mapeia BrowserUnavailableError para 503", async () => {
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    templateService: {
-      resolveHtmlFromPayload: async () => "<html><body>noop</body></html>",
-    },
     browserService: {
       createPageWithRecovery: async () => {
         throw new BrowserUnavailableError();
       },
-    },
-    nativeReportPdfService: {
-      canRenderPayload: () => false,
     },
     config: {},
     operationalState,
   });
 
   const response = await dispatch(router, {
-    url: "/",
-    body: {
-      templateId: "contract",
-      data: {},
-    },
-  });
+      url: "/",
+      body: {
+        html: "<div>noop</div>",
+      },
+    });
 
   assert.equal(response.statusCode, 503);
   assert.match(response.body.message, /Playwright browser nao instalado/i);
@@ -134,9 +120,6 @@ test("POST /pdf mapeia BlockedAssetError para 400", async () => {
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    templateService: {
-      resolveHtmlFromPayload: async () => "<html><body>noop</body></html>",
-    },
     browserService: {
       createPageWithRecovery: async () => ({
         page: {},
@@ -146,20 +129,16 @@ test("POST /pdf mapeia BlockedAssetError para 400", async () => {
         throw new BlockedAssetError();
       },
     },
-    nativeReportPdfService: {
-      canRenderPayload: () => false,
-    },
     config: {},
     operationalState,
   });
 
   const response = await dispatch(router, {
-    url: "/",
-    body: {
-      templateId: "contract",
-      data: {},
-    },
-  });
+      url: "/",
+      body: {
+        html: "<div>noop</div>",
+      },
+    });
 
   assert.equal(response.statusCode, 400);
   assert.match(response.body.message, /recurso externo nao permitido/i);
@@ -175,9 +154,6 @@ test("POST /pdf nao normaliza pagina quando html nao possui opt-in", async () =>
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    templateService: {
-      resolveHtmlFromPayload: async () => "<html><body><div>noop</div></body></html>",
-    },
     browserService: {
       createPageWithRecovery: async () => ({
         page: {
@@ -190,9 +166,78 @@ test("POST /pdf nao normaliza pagina quando html nao possui opt-in", async () =>
         normalizeCalled = true;
       },
     },
-    nativeReportPdfService: {
-      canRenderPayload: () => false,
+    config: {},
+    operationalState,
+  });
+
+  const response = await dispatch(router, {
+      url: "/",
+      body: {
+        html: "<div>noop</div>",
+      },
+    });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(normalizeCalled, false);
+});
+
+test("POST /pdf aceita html direto e retorna pdf com headers corretos", async () => {
+  const operationalState = createOperationalState({ hasRequiredToken: true });
+  operationalState.markWarmupSuccess();
+  let receivedHtml = null;
+
+  const router = createPdfRouter({
+    requireToken: (_req, _res, next) => next(),
+    pdfQueue: {
+      acquirePdfJob: async () => () => {},
     },
+    browserService: {
+      createPageWithRecovery: async () => ({
+        page: {
+          pdf: async () => Buffer.from("%PDF-mock"),
+        },
+        close: async () => {},
+      }),
+      setPageContentWithFallback: async (_page, html) => {
+        receivedHtml = html;
+      },
+      normalizePageBreaks: async () => {},
+    },
+    config: {
+      pdfPublicBaseUrl: "https://sys.maisgerencia.com.br",
+    },
+    operationalState,
+  });
+
+  const response = await dispatch(router, {
+    url: "/",
+    body: {
+      html: "<div>HTML direto</div>",
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers["content-type"], "application/pdf");
+  assert.equal(response.headers["content-disposition"], 'inline; filename="documento-gerado.pdf"');
+  assert.equal(response.headers["content-length"], String(Buffer.from("%PDF-mock").length));
+  assert.equal(response.body.toString("latin1"), "%PDF-mock");
+  assert.match(receivedHtml, /<html/i);
+  assert.match(receivedHtml, /<base href="https:\/\/sys\.maisgerencia\.com\.br\/">/i);
+  assert.match(receivedHtml, /HTML direto/i);
+});
+
+test("POST /pdf rejeita payload legado com templateId", async () => {
+  const operationalState = createOperationalState({ hasRequiredToken: true });
+  operationalState.markWarmupSuccess();
+
+  const router = createPdfRouter({
+    requireToken: (_req, _res, next) => next(),
+    pdfQueue: {
+      acquirePdfJob: async () => {
+        throw new Error("queue should not be used for invalid payload");
+      },
+    },
+    browserService: {},
     config: {},
     operationalState,
   });
@@ -200,11 +245,11 @@ test("POST /pdf nao normaliza pagina quando html nao possui opt-in", async () =>
   const response = await dispatch(router, {
     url: "/",
     body: {
-      templateId: "contract",
-      data: {},
+      html: "<div>Relatorio legado</div>",
+      templateId: "report",
     },
   });
 
-  assert.equal(response.statusCode, 200);
-  assert.equal(normalizeCalled, false);
+  assert.equal(response.statusCode, 400);
+  assert.match(JSON.stringify(response.body.errors), /templateId/i);
 });

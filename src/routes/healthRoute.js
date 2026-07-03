@@ -3,7 +3,6 @@ import { Router } from "express";
 export function createHealthRouter({
   pdfQueue,
   browserService,
-  templateService,
   config,
   operationalState,
 } = {}) {
@@ -21,7 +20,6 @@ export function createHealthRouter({
       operational,
       queue: pdfQueue?.getStats?.() || null,
       browser: browserService?.getStats?.() || null,
-      templates: templateService?.getStats?.() || null,
       limits: config
         ? {
             maxConcurrentJobs: config.pdfMaxConcurrentJobs,
