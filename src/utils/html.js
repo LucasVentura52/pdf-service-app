@@ -30,7 +30,8 @@ export function ensureFullHtmlDocument(inputHtml) {
     @page { size: A4; margin: 0; }
     body { margin: 0; padding: 0; color: #111; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; }
     table { width: 100%; border-collapse: collapse; }
-    .page-break, [data-pdf-page-break="always"] { break-before: page; page-break-before: always; }
+    .page-break, [data-pdf-page-break="always"], .page-break-before { break-before: page; page-break-before: always; }
+    img.mce-pagebreak { display: block; width: 0; height: 0; max-height: 0; border: none; margin: 0; padding: 0; overflow: hidden; page-break-after: always; break-after: page; }
   </style>
 </head>
 <body>
