@@ -27,7 +27,7 @@ export function ensureFullHtmlDocument(inputHtml) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    @page { size: A4; margin: 10mm; }
+    @page { size: A4; margin: 0; }
     body { margin: 0; padding: 0; color: #111; font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; }
     table { width: 100%; border-collapse: collapse; }
     .page-break, [data-pdf-page-break="always"] { break-before: page; page-break-before: always; }
