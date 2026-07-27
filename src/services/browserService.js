@@ -9,7 +9,6 @@ import {
   canUseDefaultSessionPool,
   resolveReusableSessionTarget,
 } from "./browserSessionPool.js";
-import { createPageRenderLifecycle } from "./pageRenderLifecycle.js";
 import { normalizeBrowserError } from "./pdfServiceErrors.js";
 
 export function buildChromiumLaunchOptions(config) {
@@ -37,7 +36,6 @@ export function createBrowserService(config) {
   let isClosing = false;
   const bufferedSessions = [];
   const pendingBufferedSessionWarmups = new Set();
-  const pageRenderLifecycle = createPageRenderLifecycle(config);
 
   async function getBrowser() {
     if (!browserPromise) {
@@ -340,8 +338,6 @@ export function createBrowserService(config) {
 
   return {
     createPageWithRecovery,
-    setPageContentWithFallback: pageRenderLifecycle.setPageContentWithFallback,
-    normalizePageBreaks: pageRenderLifecycle.normalizePageBreaks,
     warmupBrowser,
     closeBrowser,
     getStats() {
