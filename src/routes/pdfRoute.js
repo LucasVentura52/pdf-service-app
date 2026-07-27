@@ -1,16 +1,11 @@
 import { Router } from "express";
 import { pdfRequestSchema } from "../schemas/pdfRequestSchema.js";
 import { QueueSaturatedError, QueueTimeoutError } from "../services/pdfQueue.js";
-import { shouldNormalizePageBreaks } from "../services/pageRenderLifecycle.js";
 import {
   BlockedAssetError,
   BrowserUnavailableError,
 } from "../services/pdfServiceErrors.js";
-import {
-  ensureFullHtmlDocument,
-  injectBaseHref,
-  sanitizeFilename,
-} from "../utils/html.js";
+import { sanitizeFilename } from "../utils/html.js";
 
 function createPerformanceTracker(enabled, filename) {
   const startedAt = Date.now();
@@ -85,7 +80,7 @@ function sendPdfErrorResponse(error, res) {
 export function createPdfRouter({
   requireToken,
   pdfQueue,
-  browserService,
+  renderService,
   config,
   operationalState,
 }) {
@@ -123,20 +118,9 @@ export function createPdfRouter({
       releaseJob = await pdfQueue.acquirePdfJob();
       performanceTracker.mark("queue");
 
-      let html = payload.html;
-      html = ensureFullHtmlDocument(html);
-      html = injectBaseHref(html, config.pdfPublicBaseUrl);
-      performanceTracker.mark("html");
-      pageSession = await browserService.createPageWithRecovery();
-      const { page } = pageSession;
-      performanceTracker.mark("session");
-
-      await browserService.setPageContentWithFallback(page, html, payload.options);
+      const { page, session } = await renderService.render(payload.html, payload.options);
+      pageSession = session;
       performanceTracker.mark("render");
-      if (shouldNormalizePageBreaks(html)) {
-        await browserService.normalizePageBreaks(page);
-        performanceTracker.mark("normalize");
-      }
 
       const pdfBuffer = await page.pdf({
         format: payload.options?.format || "A4",

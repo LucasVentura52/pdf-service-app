@@ -8,8 +8,10 @@ import { createPdfRateLimit } from "./middleware/pdfRateLimit.js";
 import { createRequireToken } from "./middleware/requireToken.js";
 import { createHealthRouter } from "./routes/healthRoute.js";
 import { createPdfRouter } from "./routes/pdfRoute.js";
+import { createPreviewRouter } from "./routes/previewRoute.js";
 import { createBrowserService } from "./services/browserService.js";
 import { createPdfQueue } from "./services/pdfQueue.js";
+import { createRenderService } from "./services/renderService.js";
 import { createOperationalState } from "./services/operationalState.js";
 
 export function buildApp() {
@@ -19,6 +21,7 @@ export function buildApp() {
     maxPendingJobs: config.pdfMaxPendingJobs,
     acquireTimeoutMs: config.pdfQueueWaitTimeoutMs,
   });
+  const renderService = createRenderService(browserService, config);
   const requireToken = createRequireToken(config.pdfServiceTokens);
   const operationalState = createOperationalState({
     hasRequiredToken: config.pdfServiceTokens.length > 0,
@@ -39,6 +42,7 @@ export function buildApp() {
   app.use(express.json({ limit: config.pdfBodyLimit }));
   app.use(morgan("tiny"));
   app.use("/pdf", createPdfRateLimit(config.pdfRateLimitMax));
+  app.use("/preview", createPdfRateLimit(config.pdfRateLimitMax));
 
   app.use(
     createHealthRouter({
@@ -53,7 +57,17 @@ export function buildApp() {
     createPdfRouter({
       requireToken,
       pdfQueue,
-      browserService,
+      renderService,
+      config,
+      operationalState,
+    })
+  );
+  app.use(
+    "/preview",
+    createPreviewRouter({
+      requireToken,
+      pdfQueue,
+      renderService,
       config,
       operationalState,
     })

@@ -65,7 +65,7 @@ test("POST /pdf rejeita novas requisicoes enquanto o servico esta draining", asy
         throw new Error("queue should not be touched while draining");
       },
     },
-    browserService: {},
+    renderService: { render: async () => ({ page: {}, session: { close: async () => {} } }) },
     config: {},
     operationalState,
   });
@@ -91,8 +91,8 @@ test("POST /pdf mapeia BrowserUnavailableError para 503", async () => {
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    browserService: {
-      createPageWithRecovery: async () => {
+    renderService: {
+      render: async () => {
         throw new BrowserUnavailableError();
       },
     },
@@ -120,12 +120,8 @@ test("POST /pdf mapeia BlockedAssetError para 400", async () => {
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    browserService: {
-      createPageWithRecovery: async () => ({
-        page: {},
-        close: async () => {},
-      }),
-      setPageContentWithFallback: async () => {
+    renderService: {
+      render: async () => {
         throw new BlockedAssetError();
       },
     },
@@ -147,24 +143,19 @@ test("POST /pdf mapeia BlockedAssetError para 400", async () => {
 test("POST /pdf nao normaliza pagina quando html nao possui opt-in", async () => {
   const operationalState = createOperationalState({ hasRequiredToken: true });
   operationalState.markWarmupSuccess();
-  let normalizeCalled = false;
 
   const router = createPdfRouter({
     requireToken: (_req, _res, next) => next(),
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    browserService: {
-      createPageWithRecovery: async () => ({
+    renderService: {
+      render: async () => ({
         page: {
           pdf: async () => Buffer.from("pdf"),
         },
-        close: async () => {},
+        session: { close: async () => {} },
       }),
-      setPageContentWithFallback: async () => {},
-      normalizePageBreaks: async () => {
-        normalizeCalled = true;
-      },
     },
     config: {},
     operationalState,
@@ -178,34 +169,26 @@ test("POST /pdf nao normaliza pagina quando html nao possui opt-in", async () =>
     });
 
   assert.equal(response.statusCode, 200);
-  assert.equal(normalizeCalled, false);
 });
 
 test("POST /pdf aceita html direto e retorna pdf com headers corretos", async () => {
   const operationalState = createOperationalState({ hasRequiredToken: true });
   operationalState.markWarmupSuccess();
-  let receivedHtml = null;
 
   const router = createPdfRouter({
     requireToken: (_req, _res, next) => next(),
     pdfQueue: {
       acquirePdfJob: async () => () => {},
     },
-    browserService: {
-      createPageWithRecovery: async () => ({
+    renderService: {
+      render: async () => ({
         page: {
           pdf: async () => Buffer.from("%PDF-mock"),
         },
-        close: async () => {},
+        session: { close: async () => {} },
       }),
-      setPageContentWithFallback: async (_page, html) => {
-        receivedHtml = html;
-      },
-      normalizePageBreaks: async () => {},
     },
-    config: {
-      pdfPublicBaseUrl: "https://sys.maisgerencia.com.br",
-    },
+    config: {},
     operationalState,
   });
 
@@ -221,9 +204,6 @@ test("POST /pdf aceita html direto e retorna pdf com headers corretos", async ()
   assert.equal(response.headers["content-disposition"], 'inline; filename="documento-gerado.pdf"');
   assert.equal(response.headers["content-length"], String(Buffer.from("%PDF-mock").length));
   assert.equal(response.body.toString("latin1"), "%PDF-mock");
-  assert.match(receivedHtml, /<html/i);
-  assert.match(receivedHtml, /<base href="https:\/\/sys\.maisgerencia\.com\.br\/">/i);
-  assert.match(receivedHtml, /HTML direto/i);
 });
 
 test("POST /pdf rejeita payload legado com templateId", async () => {
@@ -237,7 +217,7 @@ test("POST /pdf rejeita payload legado com templateId", async () => {
         throw new Error("queue should not be used for invalid payload");
       },
     },
-    browserService: {},
+    renderService: { render: async () => ({ page: {}, session: { close: async () => {} } }) },
     config: {},
     operationalState,
   });

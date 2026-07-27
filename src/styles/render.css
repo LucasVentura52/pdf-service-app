@@ -1,0 +1,99 @@
+@page {
+  size: A4;
+  margin: 20mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color-scheme: light;
+}
+
+.render-root {
+  width: 170mm;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.render-content {
+  width: 100%;
+}
+
+.page-break,
+[data-pdf-page-break="always"],
+.page-break-before {
+  break-before: page !important;
+  page-break-before: always !important;
+}
+
+img.mce-pagebreak {
+  display: block !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  page-break-after: always !important;
+  break-after: page !important;
+}
+
+p {
+  margin: 0 0 12px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #111827;
+  line-height: 1.25;
+  margin: 20px 0 10px;
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+
+ul, ol {
+  margin: 0 0 14px;
+  padding-left: 24px;
+}
+
+li + li {
+  margin-top: 4px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+}
+
+th, td {
+  border: 1px solid #d1d5db;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+th {
+  background: #f9fafb;
+  font-weight: 700;
+}
+
+blockquote {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  color: #374151;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 18px 0;
+}

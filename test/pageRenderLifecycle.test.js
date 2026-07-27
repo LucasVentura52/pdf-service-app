@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createPageRenderLifecycle,
+} from "../src/services/pageRenderLifecycle.js";
+import {
   hasLikelyVisualAssets,
   shouldNormalizePageBreaks,
-} from "../src/services/pageRenderLifecycle.js";
+} from "../src/utils/domScripts.js";
 import { BrowserUnavailableError } from "../src/services/pdfServiceErrors.js";
 
 test("detecta opt-in de normalizacao por marcador explicito ou ancora de conteudo", () => {
