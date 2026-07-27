@@ -1,4 +1,21 @@
 import process from "node:process";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function loadCss(filename) {
+  try {
+    return readFileSync(join(__dirname, "styles", filename), "utf-8");
+  } catch {
+    return "";
+  }
+}
+
+const sharedCss = loadCss("render.css");
+const sharedPreviewCss = loadCss("render-preview.css") || sharedCss;
 
 const WAIT_UNTIL_OPTIONS = new Set(["load", "domcontentloaded", "networkidle"]);
 const DEFAULT_LOCAL_DEV_ORIGINS = [
@@ -111,6 +128,8 @@ export const config = {
     pdfPublicBaseUrl
   ),
   pdfBlockPrivateNetwork,
+  sharedCss,
+  sharedPreviewCss,
 };
 
 export function assertCriticalConfig() {

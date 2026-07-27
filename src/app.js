@@ -1,6 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import compression from "compression";
 import { assertCriticalConfig, config } from "./config.js";
 import { createCorsPolicy } from "./middleware/corsPolicy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -38,6 +39,7 @@ export function buildApp() {
   );
 
   app.use(createCorsPolicy(config.normalizedAllowedOrigins));
+  app.use(compression());
 
   app.use(express.json({ limit: config.pdfBodyLimit }));
   app.use(morgan("tiny"));
