@@ -10,6 +10,7 @@ import {
   resolveReusableSessionTarget,
 } from "./browserSessionPool.js";
 import { normalizeBrowserError } from "./pdfServiceErrors.js";
+import { ImageCache } from "./imageCache.js";
 
 export function buildChromiumLaunchOptions(config) {
   const launchOptions = {
@@ -36,6 +37,11 @@ export function createBrowserService(config) {
   let isClosing = false;
   const bufferedSessions = [];
   const pendingBufferedSessionWarmups = new Set();
+  const imageCache = new ImageCache({
+    maxEntries: config.pdfImageOptimizeCacheEntries,
+    ttlMs: config.pdfImageCacheTtlMs,
+    fetchTimeoutMs: config.pdfImageFetchTimeoutMs,
+  });
 
   async function getBrowser() {
     if (!browserPromise) {
@@ -66,6 +72,28 @@ export function createBrowserService(config) {
       recordAssetRequest(assetRequests, requestUrl, request.resourceType(), !allowed);
 
       if (allowed) {
+        if (request.resourceType() === "image") {
+          const cached = imageCache.get(requestUrl);
+          if (cached) {
+            await route.fulfill({ body: cached.buffer, contentType: cached.contentType });
+            return;
+          }
+          try {
+            const response = await route.fetch();
+            if (response.status() === 200) {
+              const body = await response.body();
+              const contentType =
+                response.headers()["content-type"] || "image/png";
+              if (body instanceof Buffer) {
+                await imageCache.set(requestUrl, body, contentType);
+              }
+              await route.fulfill({ body, contentType, status: response.status() });
+              return;
+            }
+          } catch {
+            // Falha no fetch: tenta continuar normalmente.
+          }
+        }
         await route.continue();
         return;
       }
@@ -340,15 +368,16 @@ export function createBrowserService(config) {
     createPageWithRecovery,
     warmupBrowser,
     closeBrowser,
-    getStats() {
-      return {
-        browserLaunched: Boolean(browserPromise),
-        bufferedSessions: bufferedSessions.length,
-        bufferedSessionsTarget: getBufferedSessionsTarget(),
-        pendingWarmups: pendingBufferedSessionWarmups.size,
-        reuseSessionsEnabled: config.pdfReuseSessions,
-        reuseSessionMaxUses: config.pdfReuseSessionMaxUses,
-      };
-    },
+     getStats() {
+       return {
+         browserLaunched: Boolean(browserPromise),
+         bufferedSessions: bufferedSessions.length,
+         bufferedSessionsTarget: getBufferedSessionsTarget(),
+         pendingWarmups: pendingBufferedSessionWarmups.size,
+         reuseSessionsEnabled: config.pdfReuseSessions,
+         reuseSessionMaxUses: config.pdfReuseSessionMaxUses,
+         imageCache: imageCache.getStats(),
+       };
+     },
   };
 }

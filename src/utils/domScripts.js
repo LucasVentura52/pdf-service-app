@@ -28,36 +28,30 @@ export function createWaitForAssetsScript(timeoutMs) {
   return `
     (function(maxWait) {
       var capTimeout = Math.max(100, Number(maxWait || 0));
-      var stopAfter = function(promise) {
-        return Promise.race([
-          promise,
-          new Promise(function(resolve) { setTimeout(resolve, capTimeout); })
-        ]);
+      var waitImages = function() {
+        var images = Array.from(document.images || []);
+        if (!images.length) return Promise.resolve();
+        var visibleImages = images.filter(function(img) {
+          var rect = img.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+        if (!visibleImages.length) return Promise.resolve();
+        return Promise.all(visibleImages.map(function(img) {
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+          return new Promise(function(resolve) {
+            img.addEventListener("load", resolve, { once: true });
+            img.addEventListener("error", resolve, { once: true });
+          });
+        }));
       };
       var waitFonts = function() {
         if (!("fonts" in document) || !document.fonts || !document.fonts.ready) return Promise.resolve();
         return document.fonts.ready;
       };
-      var waitImages = function() {
-        var images = Array.from(document.images || []);
-        if (!images.length) return Promise.resolve();
-        return Promise.all(images.map(function(img) {
-          var decodePromise = typeof img.decode === "function"
-            ? img.decode().catch(function() { return null; })
-            : Promise.resolve();
-          if (img.complete) return decodePromise;
-          return new Promise(function(resolve) {
-            var finalize = function() { decodePromise.finally(function() { resolve(); }); };
-            img.addEventListener("load", finalize, { once: true });
-            img.addEventListener("error", function() { resolve(); }, { once: true });
-          });
-        })).then(function() {
-          return new Promise(function(resolve) {
-            requestAnimationFrame(function() { requestAnimationFrame(resolve); });
-          });
-        });
-      };
-      return stopAfter(Promise.all([waitFonts(), waitImages()]));
+      return Promise.race([
+        Promise.all([waitFonts(), waitImages()]),
+        new Promise(function(resolve) { setTimeout(resolve, capTimeout); })
+      ]);
     })(${timeoutMs});
   `;
 }
