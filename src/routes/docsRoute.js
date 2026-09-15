@@ -1,18 +1,30 @@
 import { Router } from "express";
-import swaggerUi from "swagger-ui-express";
 import { contentSecurityPolicy } from "helmet";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { apiReference } from "@scalar/express-api-reference";
 import { openApiDocument } from "../docs/openapi.js";
+
+const require = createRequire(import.meta.url);
+
+// O pacote @scalar/api-reference traz o build standalone do browser
+// (UMD, registra `window.Scalar`). O @scalar/express-api-reference
+// carrega esse bundle por CDN por padrao; aqui apontamos para o arquivo
+// local, mantendo a politica "sem CDN" do projeto.
+const scalarDistPath = dirname(require.resolve("@scalar/api-reference"));
+const scalarStandalonePath = join(scalarDistPath, "browser", "standalone.js");
 
 /**
  * Rota publica de documentacao da API.
  *
- * - `GET /docs.json` -> spec OpenAPI 3.1 em JSON (para ferramentas externas)
- * - `GET /docs/`     -> Swagger UI servido com assets locais (sem CDN)
- * - `GET /docs`      -> redireciona para `/docs/` (assets relativos do Swagger UI)
+ * - `GET /docs.json`              -> spec OpenAPI 3.1 em JSON (para ferramentas externas)
+ * - `GET /docs/`                  -> Scalar API Reference (assets locais, sem CDN)
+ * - `GET /docs`                   -> redireciona para `/docs/`
+ * - `GET /docs-assets/standalone.js` -> bundle do Scalar (same-origin)
  *
- * O `swagger-ui-express` injeta um script inline (`swagger-ui-init.js`) e estilos
- * inline. Por isso o CSP padrao do helmet e relaxado apenas nesta sub-arvore;
- * o restante do app mantem o helmet global.
+ * O Scalar injeta scripts e estilos inline em runtime; por isso o CSP padrao
+ * do helmet e relaxado apenas nesta sub-arvore. O restante do app mantem o
+ * helmet global.
  */
 export function createDocsRouter() {
   const router = Router();
@@ -39,10 +51,19 @@ export function createDocsRouter() {
     res.json(openApiDocument);
   });
 
-  // O HTML gerado pelo swagger-ui-express referencia os assets por caminho
-  // relativo (`./swagger-ui-bundle.js` etc.), que so resolvem com a barra final.
-  // Redireciona apenas `/docs` (sem barra); `/docs/` e subpaths seguem para o
-  // Swagger UI. `req.originalUrl` distingue os dois casos porque o Express
+  // Bundle unico e autocontido do Scalar (sem CDN e sem source maps).
+  router.get("/docs-assets/standalone.js", (_req, res, next) => {
+    res.sendFile(scalarStandalonePath, {
+      headers: { "Cache-Control": "public, max-age=86400" },
+    }, (error) => {
+      // Cliente que abortou no meio do stream deixa o abort como unico erro
+      // possivel; repassar para o errorHandler resultaria em double-send.
+      if (error && !res.headersSent) next(error);
+    });
+  });
+
+  // Redireciona apenas `/docs` (sem barra) para `/docs/`, mantendo a URL
+  // canonica. `req.originalUrl` distingue os dois casos porque o Express
   // normaliza `req.path` apos o strip do mount.
   router.use("/docs", (req, res, next) => {
     if (req.path === "/" && !req.originalUrl.endsWith("/")) {
@@ -52,9 +73,13 @@ export function createDocsRouter() {
     next();
   });
 
-  router.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocument, {
-    customSiteTitle: "PDF Service API",
-    customRobots: "noindex, nofollow",
+  router.use("/docs", apiReference({
+    cdn: "/docs-assets/standalone.js",
+    content: openApiDocument,
+    withDefaultFonts: false,
+    hideModels: false,
+    theme: "purple",
+    pageTitle: "PDF Service API",
   }));
 
   return router;

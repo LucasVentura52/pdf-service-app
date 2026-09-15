@@ -10,6 +10,8 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@scalar/api-reference": "^1.68.0",
+    "@scalar/express-api-reference": "^0.10.18",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -18,8 +20,6 @@
     "helmet": "^8.1.0",
     "morgan": "^1.10.0",
     "playwright": "1.43.1",
-    "swagger-ui-dist": "^5.32.15",
-    "swagger-ui-express": "^5.0.1",
     "zod": "^3.25.76"
   }
 }

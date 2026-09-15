@@ -10,15 +10,15 @@ O microservico nao monta documentos. Ele nao usa `templateId`, `data`, templates
 
 ## Tecnologias
 
-- Node.js 18+
+- Node.js 22+
 - Express
 - Playwright
 - Zod
-- Swagger UI (OpenAPI 3.1)
+- Scalar API Reference (OpenAPI 3.1)
 
 ## Requisitos
 
-- Node.js 18 ou superior
+- Node.js 22 ou superior
 - Dependencias instaladas com `npm install`
 - Chromium do Playwright instalado
 
@@ -122,10 +122,11 @@ Para manter o servico simples, com boa performance e sem excesso de consumo de m
 
 ### `GET /docs`
 
-Documentacao padrao da API (Swagger UI). Publica, acessivel sem token.
+Documentacao padrao da API (Scalar API Reference, tema purple). Publica, acessivel sem token.
 
 - interface interativa para explorar e testar os endpoints
 - assets locais (sem CDN), CSP aplicado apenas a essa sub-arvore
+- `GET /docs` (sem barra) redireciona para `GET /docs/`
 
 ### `GET /docs.json`
 

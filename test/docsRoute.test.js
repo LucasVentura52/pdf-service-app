@@ -37,7 +37,7 @@ test("GET /docs.json retorna a especificacao OpenAPI 3.1", async () => {
   });
 });
 
-test("GET /docs redireciona para /docs/ e GET /docs/ serve a UI do Swagger", async () => {
+test("GET /docs redireciona para /docs/ e GET /docs/ serve a UI do Scalar", async () => {
   await withServer(async (base) => {
     const redirect = await fetch(`${base}/docs`, { redirect: "manual" });
     assert.equal(redirect.status, 301);
@@ -46,15 +46,26 @@ test("GET /docs redireciona para /docs/ e GET /docs/ serve a UI do Swagger", asy
     const response = await fetch(`${base}/docs/`);
     assert.equal(response.status, 200);
     const html = await response.text();
-    assert.match(html, /id="swagger-ui"/, "HTML deve conter o container do Swagger UI");
+    assert.match(html, /id="app"/, "HTML deve conter o container do Scalar");
+    assert.match(html, /Scalar\.createApiReference/, "HTML deve inicializar o Scalar");
     assert.match(html, /PDF Service API/, "HTML deve conter o titulo do servico");
   });
 });
 
-test("GET /docs/swagger-ui.css serve os assets locais do Swagger UI", async () => {
+test("GET /docs/ nao referencia CDN externo", async () => {
   await withServer(async (base) => {
-    const response = await fetch(`${base}/docs/swagger-ui.css`);
+    const response = await fetch(`${base}/docs/`);
+    const html = await response.text();
+    assert.doesNotMatch(html, /cdn\.jsdelivr\.net|unpkg\.com/, "HTML nao deve carregar assets de CDN");
+  });
+});
+
+test("GET /docs-assets/standalone.js serve o bundle local do Scalar", async () => {
+  await withServer(async (base) => {
+    const response = await fetch(`${base}/docs-assets/standalone.js`);
     assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type") || "", /text\/css/);
+    assert.match(response.headers.get("content-type") || "", /javascript/);
+    // Consome o body (3.6MB) para o servidor nao abortar o stream no close.
+    await response.arrayBuffer();
   });
 });
