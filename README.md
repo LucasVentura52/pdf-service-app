@@ -14,6 +14,7 @@ O microservico nao monta documentos. Ele nao usa `templateId`, `data`, templates
 - Express
 - Playwright
 - Zod
+- Swagger UI (OpenAPI 3.1)
 
 ## Requisitos
 
@@ -118,6 +119,17 @@ Para manter o servico simples, com boa performance e sem excesso de consumo de m
 - escale com mais replicas antes de aumentar muito a concorrencia por instancia
 
 ## Endpoints
+
+### `GET /docs`
+
+Documentacao padrao da API (Swagger UI). Publica, acessivel sem token.
+
+- interface interativa para explorar e testar os endpoints
+- assets locais (sem CDN), CSP aplicado apenas a essa sub-arvore
+
+### `GET /docs.json`
+
+Spec OpenAPI 3.1 em JSON, para ferramentas externas (Postman, Insomnia, geradores de client).
 
 ### `GET /health`
 

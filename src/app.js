@@ -10,6 +10,7 @@ import { createRequireToken } from "./middleware/requireToken.js";
 import { createHealthRouter } from "./routes/healthRoute.js";
 import { createPdfRouter } from "./routes/pdfRoute.js";
 import { createPreviewRouter } from "./routes/previewRoute.js";
+import { createDocsRouter } from "./routes/docsRoute.js";
 import { createBrowserService } from "./services/browserService.js";
 import { createPdfQueue } from "./services/pdfQueue.js";
 import { createRenderService } from "./services/renderService.js";
@@ -74,6 +75,9 @@ export function buildApp() {
       operationalState,
     })
   );
+
+  // Documentacao publica da API (Swagger UI + spec OpenAPI).
+  app.use(createDocsRouter());
 
   app.use(errorHandler);
 
