@@ -50,7 +50,7 @@ export const openApiDocument = {
   },
   externalDocs: {
     description: "README do projeto (instalacao, variaveis de ambiente e exemplos)",
-    url: "https://github.com/",
+    url: "https://github.com/LucasVentura52/pdf-service-app",
   },
   servers: [
     {
