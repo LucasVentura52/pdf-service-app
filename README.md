@@ -195,6 +195,17 @@ curl -X POST http://localhost:3100/pdf \
 - `options.scale` aceita valores entre `0.1` e `2`
 - `options.timeoutMs` aceita valores entre `1000` e `60000`
 
+#### Codigos de resposta
+
+| Status | Quando |
+|---|---|
+| `200` | PDF gerado (`application/pdf`) |
+| `400` | Payload invalido (validacao, `templateId`/`data` presentes, JSON malformado) ou asset bloqueado pela politica |
+| `401` | Token ausente ou invalido |
+| `429` | Rate limit excedido (`PDF_RATE_LIMIT_MAX` requisicoes/minuto) |
+| `503` | Servico nao pronto (warmup/draining/token ausente), fila lotada ou browser indisponivel — com `Retry-After` |
+| `500` | Erro interno |
+
 #### Headers da resposta
 
 - `Content-Type: application/pdf`
